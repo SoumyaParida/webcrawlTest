@@ -5,7 +5,7 @@ class alexaSiteInfoItem(Item):
     name=Field()
     title=Field()
     link=Field()
-    #allowedDowmin=Field()
+    allowedDowmin=Field()
     #url = Field()
     #description = Field()
     #category = Field()
