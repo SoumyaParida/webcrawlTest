@@ -3,7 +3,10 @@ import json
 from urlparse import urlparse
 import urllib
 import csv
-
+import dns.zone
+import dns.ipv4
+import os.path
+import sys
 
 from scrapy.selector import Selector
 try:
@@ -20,9 +23,11 @@ from scrapy import signals
 from scrapy.http import Request
 from scrapy.selector import HtmlXPathSelector
 from alexaCrawl.items import *
+from dns.resolver import dns
 import dpkt, pcap
 import socket, sys
 from struct import *
+
 
 class CloseSpider(object):
     def __init__(self, crawler):
@@ -104,6 +109,8 @@ class alexaSpider(CrawlSpider):
             #item['name'] = site.css('a[href]text')[0].extract()
             #item['description'] = site.css('.description::text')[0].extract()
             remainder = site.css('.remainder::text')
+            #items.append(item)
+            #print items,'items count'    
             #if remainder:
              #   item['description'] += remainder[0].extract()  
             # more specific
@@ -134,7 +141,7 @@ class alexaSpider(CrawlSpider):
         #return request
             #yield Request(url= sendUrl, callback=self.parse_details )
         #raise CloseSpider(reason='API usage exceeded')d
-        #return items
+       # return items
 
     def parse_details(self,response):
         #self.log("Visited %s" % response.url)
@@ -143,13 +150,18 @@ class alexaSpider(CrawlSpider):
         print response.url
         allowedDomain=[]
         itemsNew=[]
-        global items
-        items = []
+        #global items
+        #items = []
         if (response.url).find("http://www") == 0:
             allowedDomain=response.url.split("http://www.")
+        elif (response.url).find("https://www") == 0:
+            allowedDomain=response.url.split("https://www.")
         elif (response.url).find("http://") == 0:
             allowedDomain=response.url.split("http://")
+        elif (response.url).find("https://") == 0:
+            allowedDomain=response.url.split("https://")
         
+        print "out of index",allowedDomain[1]
         allowed_domains = [allowedDomain[1]]
         print "allowed_domains=",allowed_domains
         start_urls = [response.url]
@@ -172,12 +184,12 @@ class alexaSpider(CrawlSpider):
         
         for titles in titles:
             item = alexaSiteInfoItem()
-          # item ["title"] = titles.select("a/text()").extract()
+            item ["title"] = titles.select("a/text()").extract()
             item ["link"] = titles.select("a/@href").extract()
             itemsNew.append(item)
             print "itemsNew=",itemsNew
             s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
-                # receive a packet
+                #receive a packet
             while True:
                 packet = s.recvfrom(65565)
                  
@@ -201,7 +213,7 @@ class alexaSpider(CrawlSpider):
                 s_addr = socket.inet_ntoa(iph[8]);
                 d_addr = socket.inet_ntoa(iph[9]);
                  
-                print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
+                #print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
                  
                 tcp_header = packet[iph_length:iph_length+20]
                  
@@ -223,10 +235,10 @@ class alexaSpider(CrawlSpider):
                 #get data from the packet
                 data = packet[h_size:]
                  
-                print 'Data : ' + data
-                itemsNew.append(source_port)
-                itemsNew.append(dest_port)
-                itemsNew.append(data)
+                #print 'Data : ' + data
+                #itemsNew.append(source_port)
+                #itemsNew.append(dest_port)
+                #itemsNew.append(data)
             print "complete Crawling*****************************************************"
             return itemsNew
 
