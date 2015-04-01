@@ -26,46 +26,57 @@ from alexaCrawl.items import *
 from dns.resolver import dns
 import dpkt, pcap
 import socket, sys
+from collections import OrderedDict
 from struct import *
+from scrapy.exceptions import CloseSpider
 
+items=[]
 class alexaSpider(CrawlSpider):
     name = "alexa"
     allowed_domains = ["alexa.com"]
     start_urls = [
         "http://www.alexa.com/",
-        "http://www.alexa.com/topsites", 
+         "http://www.alexa.com/topsites",
     ]
+
     rules = [
-        Rule(sle(allow=("/topsites;?[0-9]*/")), callback='parse_category_top', follow=True),
+        Rule(sle(allow=("/topsites/")), callback='parse_category_top', follow=True),
     ]
+    
+    global items
+    items=[]
+
     #function to retrieve links from alexa 
     def parse_category_top(self, response):
-        global items
-        items = []
+        print "***********************************************"
         sel = Selector(response)
-
         sites = sel.css('.site-listing')
+
         for site in sites:
             item = alexaSiteInfoItem()
             #item['url'] = site.css('a[href*=siteinfo]::attr(href)')[0].extract()
-            item['name'] = site.css('a[href*=siteinfo]::text')[0].extract()
-            #item['description'] = site.css('.description::text')[0].extract()
-            remainder = site.css('.remainder::text')
-            #if remainder:
-             #   item['description'] += remainder[0].extract()
-            # more specific
-            #item['category'] = response.url.split('/')[-1]
-            items.append(item)
-            value=item['name']
-            if ((value.find("http://") == -1) or (value.find("https://") == -1)):
-                value="http://"+ value
-            print "sending value"
-            request=Request(url=value,callback=self.parse_details,dont_filter=True)
-            print "receiving value"
-            request.meta['item'] = item
-        return request
+            item['name']= site.css('a[href*=siteinfo]::text')[0].extract()
+            print item['name']
+            print "len(items)********************************************888",len(items)
+            if len(items)>10000:
+                raise CloseSpider('Item limit exceeded')
+            else:
+                if item in items:
+                    continue
+                else :
+                    if item['name'] not in items:
+                        items.append(item['name'])
+        
+        resultFile = open("output2.csv",'wb')
+        wr = csv.writer(resultFile, dialect='excel')
+        for item in items:
+            wr.writerow([item,])
 
-    def parse_details(self,response):
+        finalItemList=[]
+        finalItemList=self.parse_sites(items,50)
+        return
+
+    def parse_details(url):
         print("start crawling........................................................")
         allowedDomain=[]
         if (response.url).find("http://www") == 0:
@@ -94,3 +105,40 @@ class alexaSpider(CrawlSpider):
             items.append(item)
 
         return items
+
+    def parse_sites(urls, nprocs):
+        def worker(urls, out_q):
+            """ The worker function, invoked in a process. 'urls' is a
+                list of numbers to parse. The results are placed in
+                a multiple lists that's are finally pushed to a queue.
+            """
+            outdict = {}
+            for url in urls:
+                outdict[url] = parse_details(url)
+            out_q.put(outdict)
+
+        # Each process will get 'chunksize' nums and a queue to put his out
+        # dict into
+        out_q = Queue()
+        chunksize = int(math.ceil(len(items) / float(nprocs)))
+        procs = []
+
+        for i in range(nprocs):
+            p = multiprocessing.Process(
+                    target=worker,
+                    args=(nums[chunksize * i:chunksize * (i + 1)],
+                          out_q))
+            procs.append(p)
+            p.start()
+
+        # Collect all results into a single result dict. We know how many dicts
+        # with results to expect.
+        resultdict = {}
+        for i in range(nprocs):
+            resultdict.update(out_q.get())
+
+        # Wait for all worker processes to finish
+        for p in procs:
+            p.join()
+
+        return resultdic
