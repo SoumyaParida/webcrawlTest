@@ -88,7 +88,7 @@ class alexaSpider(CrawlSpider):
     items=[]
     itemList=[]
     global resultFile
-    resultFile = open("output22.csv",'r+')
+    resultFile = open("final.csv",'wbr+')
     # def parse(self,response):
     #     items=[]  
     #     output=[]
