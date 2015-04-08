@@ -186,11 +186,12 @@ class alexaSpider(CrawlSpider):
                 wr.writerow([item,])
             
         for url in items:
+            print "iterate"
             if ((url.find("http://") == -1) or (url.find("https://") == -1)):
                 url="http://"+ url
-            request=Request(url=url,callback=self.parse_details,dont_filter=True)
-            request.meta['item'] = item
-        return request
+            yield Request(url=url,callback=self.parse_details,dont_filter=True)
+            #request.meta['item'] = item
+        #return request
         # finalItemList=[]
         # finalItemList=self.parse_sites(items,50)
 
@@ -249,7 +250,7 @@ class alexaSpider(CrawlSpider):
         #print "results",titles
         #titles = hxs.select("//ul/li").extract()
         #titles=response.selector.xpath("//p")
-        print "titles",titles
+        #print "titles",titles
         #titles=hxs.select("//a")
         #print "titles",titles
         # print "url inside pasre_details",url
@@ -261,30 +262,29 @@ class alexaSpider(CrawlSpider):
         # print "items***********************************",items
         # items.append(item)
         splititemp=[]
-        for titles in titles:
+        for title in titles:
             item1 = alexaSiteInfoItem()
             #value=titles.select("a/@href").extract()
-            value=titles.select("a/@href").extract()
-            url = ''.join(value)
-            print "url=========",url
+            #value=titles.select("a/@href").extract()
+            url = ''.join(title)
+            
             if url.find ("http://") ==0 or url.find ("https://")==0:
-                item1=  url
-                splititemp=item1.split(".com/")
-                splititemp=splititemp[0]+".com"
+                item1= url
+                #splititemp=item1.split(".com/")
+                #splititemp=splititemp[0]+".com"
             else:
                 break
             #print "item==========",item
             #print "items***********************************",items
-            if splititemp not in itemList:
-                itemList.append(splititemp)
+            if item1 not in itemList:
+                itemList.append(item1)
 
-        print "itemList",itemList
+        print "items***********************************",itemList
+
         #resultFile = open("output18.csv",'wb')
         wr = csv.writer(resultFile, dialect='excel')
         for item in itemList:
             wr.writerow([item,])
-
-        return
 
     def parse_sites(self,urls,nprocs):
         def worker(urls, out_q):
