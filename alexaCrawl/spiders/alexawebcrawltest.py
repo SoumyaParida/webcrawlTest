@@ -88,7 +88,7 @@ class alexaSpider(CrawlSpider):
     items=[]
     itemList=[]
     global resultFile
-    resultFile = open("final.csv",'wbr+')
+    resultFile = open("final1.csv",'wbr+')
     # def parse(self,response):
     #     items=[]  
     #     output=[]
@@ -177,13 +177,13 @@ class alexaSpider(CrawlSpider):
 
     #return Request(items,callback=self.parse_sites)
 
-        if len(items)<500:
-            return
-        else :
-            resultstFile = open("output15.csv",'wb')
-            wr = csv.writer(resultFile, dialect='excel')
-            for item in items:
-                wr.writerow([item,])
+        # if len(items)<500:
+        #     return
+        # else :
+        #     resultstFile = open("output15.csv",'wb')
+        #     wr = csv.writer(resultFile, dialect='excel')
+        #     for item in items:
+        #         wr.writerow([item,])
             
         for url in items:
             print "iterate"
