@@ -36,168 +36,130 @@ from scrapy.contrib.linkextractors import LinkExtractor
 from scrapy.http import HtmlResponse
 from scrapy.crawler import CrawlerProcess
 import fileinput
+import httplib2
+from multiprocessing import Lock, Process, Queue, current_process
 
 items=[]
 itemList=[]
-# class CrawlerWorker(multiprocessing.Process):
-
-#     def __init__(self, spider, result_queue):
-#         multiprocessing.Process.__init__(self)
-#         self.result_queue = result_queue
-
-#         self.crawler = CrawlerProcess(settings)
-#         if not hasattr(project, 'crawler'):
-#             self.crawler.install()
-#         self.crawler.configure()
-
-#         self.items = []
-#         self.spider = spider
-#         dispatcher.connect(self._item_passed, signals.item_passed)
-
-#     def _item_passed(self, item):
-#         self.items.append(item)
- 
-#     def run(self):
-#         self.crawler.crawl(self.spider)
-#         self.crawler.start()
-#         self.crawler.stop()
-#         self.result_queue.put(self.items)
-
+Final_items=[]
 
 class alexaSpider(CrawlSpider):
     name = "alexa"
     allowed_domains = ["alexa.com"]
     start_urls = [
-        #"http://www.alexa.com/",
-        "http://www.alexa.com/topsites/",
-        #"http://www.alexa.com/topsites/global/Top/",
-        
+        "http://www.alexa.com/topsites/",    
     ]
 
     rules = [
         Rule(sle(allow=("/topsites/global;0")), callback='parse_category_top', follow=True),
         Rule(sle(allow=("/topsites/global;[0-9]"),restrict_xpaths=('//a[@class="next"]', )), callback='parse_category_top', follow=True),
-        #Rule(sle(allow=(items),restrict_xpaths=('//a[@class="next"]', )), callback='parse_category_top', follow=True),
-        #Rule(sle(allow=(itemList),restrict_xpaths=('//a[@class="next"]', )), callback='parse_category_top', follow=True),
-        #Rule(sle(allow=("/topsites/global;[0-9]"),restrict_xpaths=('//a[@class="next"]', )), callback='parse_category_top', follow=True),
-        #Rule(sle(allow=("/topsites/countries/AF/"),restrict_xpaths=('//a[@class="next"]', )), callback='parse_category_top', follow=True),
-        #Rule(LinkExtractor(allow=('/topsites/global;', ), restrict_xpaths=('//a[@class="next"]', )), callback='parse_category_top',follow= True),
     ]
     
-    global items
+    global items,Final_items
     items=[]
     itemList=[]
+    Final_items=[]
     global resultFile
-    resultFile = open("final1.csv",'wbr+')
-    # def parse(self,response):
-    #     items=[]  
-    #     output=[]
-    #     #response.url=sle(allow=("/topsites/"))
-    #     #print "len(items)++++++++++++++++++++++++++",len(items)
-
-    #     while (len(output)<100):
-    #         sel = Selector(response)
-    #         sel=allow("/topsites/")
-    #         sites = sel.css('.site-listing')
-    #         items=self.parse_category_top(sites)
-    #         output.append(items)
-
-    #     print "output++++++++++++++++++++++++",output
-
-    #     print "items!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",items
-    #     print "check the flow************************************************"
-
-    #     resultFile = open("output3.csv",'wb')
-    #     wr = csv.writer(resultFile, dialect='excel')
-    #     for item in items:
-    #         wr.writerow([item,])
-
-    #     finalItemList=[]
-    #     finalItemList=self.parse_sites(items,50)
-    #     print "return................................................................"
-
-    # to extract from first page
-
-
+    resultFile = open("final.csv",'wbr+')
 
     #function to retrieve links from alexa 
-    def parse_category_top(self, response):
+    # def parse_category_top(self, response):
         
-        sel = Selector(response)
-        sites = sel.css('.site-listing')
-        #print "site",sites
+    #     sel = Selector(response)
+    #     sites = sel.css('.site-listing')
+    #     #print "site",sites
 
-        for site in sites:
-            item = alexaSiteInfoItem()
-            #item['url'] = site.css('a[href*=siteinfo]::attr(href)')[0].extract()
-            item['name']= site.css('a[href*=siteinfo]::text')[0].extract()
-            if len(items)>500:
-                raise CloseSpider('Item limit exceeded')
-            else:
-                if item in items:
-                    continue
-                else :
-                    if item['name'] not in items:
-                        items.append(item['name'])
+    #     for site in sites:
+    #         item = alexaSiteInfoItem()
+    #         #item['url'] = site.css('a[href*=siteinfo]::attr(href)')[0].extract()
+    #         item['name']= site.css('a[href*=siteinfo]::text')[0].extract()
+    #         if len(items)>500:
+    #             raise CloseSpider('Item limit exceeded')
+    #         else:
+    #             if item in items:
+    #                 continue
+    #             else :
+    #                 if item['name'] not in items:
+    #                     items.append(item['name'])
 
-        if len(items)<500:
-                return
-        else :
-            wr = csv.writer(resultFile, dialect='excel')
-            for item in items:
-                wr.writerow([item,])
+    #     print "return1................................................................"
 
-        #request=self.parse_details(items)
-        # for url in items:
-        #     if ((url.find("http://") == -1) or (url.find("https://") == -1)):
-        #          url="http://"+ url
-        #     request=Request(url=url,callback=self.parse_details,dont_filter=True)
-        #     request.meta['item'] = item
-        #     return request
-        # for url in items:
-        # for url in open('output22.csv','r').readlines():
-        #     url = filter(lambda x: not x.isspace(), url)
-        #     print "fileline-------",url
-        # splitDomain=[]
-        # for url in items:
-        #     if ((url.find("http://") == -1) or (url.find("https://") == -1)):
-        #         url="http://"+ url
-        #     print "value",url
-            #request=self.parse_details(url=url)
-            #request=Request(url=url,callback=self.parse_details,dont_filter=True)
-            #request.meta['item'] = item
-            #continue
-        
-    #     #return request
-    # except Exception as e:
-    #     #log.msg("Parsing failed for URL {%s}"%format(response.request.url))
-    #     raise       
+    #     if len(items)<500:
+    #             return
+    #     else :
+    #         wr = csv.writer(resultFile, dialect='excel')
+    #         for item in items:
+    #             wr.writerow([item,])
 
-    
-
-    #return Request(items,callback=self.parse_sites)
-
-        # if len(items)<500:
-        #     return
-        # else :
-        #     resultstFile = open("output15.csv",'wb')
-        #     wr = csv.writer(resultFile, dialect='excel')
-        #     for item in items:
-        #         wr.writerow([item,])
+    #     # finalItemList=[]
+    #     # print "return2................................................................"
+    #     # finalItemList=self.parse_sites(items)
+    #     # print "finalItemList",finalItemList
+    #     # print "return................................................................"
             
-        for url in items:
-            print "iterate"
-            if ((url.find("http://") == -1) or (url.find("https://") == -1)):
-                url="http://"+ url
-            yield Request(url=url,callback=self.parse_details,dont_filter=True)
-            #request.meta['item'] = item
-        #return request
-        # finalItemList=[]
-        # finalItemList=self.parse_sites(items,50)
+    #     for url in items:
+    #         print "iterate"
+    #         if ((url.find("http://") == -1) or (url.find("https://") == -1)):
+    #             url="http://"+ url
+    #         yield Request(url=url,callback=self.parse_details,dont_filter=True)
 
-        # print "finalItemList",finalItemList
+    def parse(self,response):
+        # FileToRead = open("top-1m.csv",'r+')
+        # rowValues=[]
+        # reader = csv.DictReader(FileToRead)
+        # for row in reader:
+        #     # Values=row
+        #     # rowValues=row.split(',')
+        #     print "rowValues",row
+        rowValues=[]
+        finalItemList=[]
+        listOfLists=[]
+
+        row_no=1
+        code_chunk=1
+        listOfLists=[[] for _ in range(4)]
+        #listOfLists.append([])
+        with open('top-1m.csv') as csvfile:
+            spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|') 
+            for row in spamreader:
+                rowValue=', '.join(row)
+                rowValues=rowValue.split(",")
+               # if len(listOfLists)<10:
+                if (code_chunk==row_no):
+                    #finalItemList.append(rowValues[1])
+                    
+                    listOfLists[row_no-1].append(rowValues[1])             
+                    if (row_no==4):
+                        row_no=row_no%4
+                        #row_no=row_no-1
+                    row_no=row_no+1
+                    code_chunk=(row_no%20)
+                    # if row_no==20:
+                    #     code_chunk=20
+                    # else:    
+                    #     code_chunk=(row_no%20)
+                    #     continue
+                        #print "code_chunk",code_chunk    
+                else:
+                    break
+
         
+        for eachList in listOfLists:
+            print "eachList",eachList
+            for url in eachList:
+                print "iterate"
+                if ((url.find("http://") == -1) or (url.find("https://") == -1)):
+                    url="http://"+ url
+                yield Request(url=url,callback=self.parse_details,dont_filter=True)
 
+                # if (len(finalItemList)<50):
+                #     #if row
+                #     finalItemList.append(rowValues[1])
+                #     print "rowValue",rowValues[1]
+                # else:
+                #     break
+
+            
     def parse_details(self,response):
         print("start crawling........................................................")
         print "response",response.url
@@ -248,24 +210,10 @@ class alexaSpider(CrawlSpider):
         hxs = Selector(response)
         titles = hxs.select("//a/@href").extract()
         #print "results",titles
-        #titles = hxs.select("//ul/li").extract()
-        #titles=response.selector.xpath("//p")
-        #print "titles",titles
-        #titles=hxs.select("//a")
-        #print "titles",titles
-        # print "url inside pasre_details",url
-        # value = url.select("a/@href")
-        # url = ''.join(value)
-        # if url.find ("http://") ==0 or url.find ("https://")==0 or url.find ("www") ==0:
-        #         item['name'] =  url
-        # print "item==========",item
-        # print "items***********************************",items
-        # items.append(item)
+
         splititemp=[]
         for title in titles:
             item1 = alexaSiteInfoItem()
-            #value=titles.select("a/@href").extract()
-            #value=titles.select("a/@href").extract()
             url = ''.join(title)
             
             if url.find ("http://") ==0 or url.find ("https://")==0:
@@ -286,60 +234,51 @@ class alexaSpider(CrawlSpider):
         for item in itemList:
             wr.writerow([item,])
 
-    def parse_sites(self,urls,nprocs):
-        def worker(urls, out_q):
-            """ The worker function, invoked in a process. 'urls' is a
-                list of numbers to parse. The results are placed in
-                a multiple lists that's are finally pushed to a queue.
-            """
-            outdict = []
-            for url in urls:
-                item = alexaSiteInfoItem()
-                if ((url.find("http://") == -1) or (url.find("https://") == -1)):
-                    value="http://"+ url
+    # def parse_sites(self,urls):
+    #     def worker(work_queue, done_queue):
+    #         try:
+    #             print "soumya"
+    #             for url1 in work_queue:
+    #                 print "url1",url1
+    #                 print "worker",work_queue.get
+    #                 request=Request(url=url,callback=self.parse_details,dont_filter=True)
+    #                 request.meta['item'] = item
+    #                 #status_code = print_site_status(url1)
+    #              #   print "status_code",status_code
+    #               #  done_queue.put("%s - %s got %s." % (current_process().name, url1, status_code))
+    #                 return
+    #         except Exception, e:
+    #             #done_queue.put("%s failed on %s with: %s" % (current_process().name, url1, e.message))
+    #             return True
 
-                # crawler = CrawlerWorker(MySpider(myArgs), result_queue)   
-                # crawler.start()
-                request=Request(url=value,callback=self.parse_details,dont_filter=True)
-                # for item in result_queue.get():
-                #      yield item
-                return
-                #response = HtmlResponse(url=value)
-                #outdict =self.parse_details(response)
-                #print "outdict********************",outdict 
-            #return request
-                #outdict =self.parse_details(response)
-            #print "outdict********************",outdict
-            #out_q.put(outdict)
-            
+    #     def print_site_status(url2):
+    #         http = httplib2.Http(timeout=10)
+    #         headers, content = http.request(url2)
+    #         return headers.get('status', 'no response')
 
-        # Each process will get 'chunksize' nums and a queue to put his out
-        # dict into
-        #proclist=[]
-        #nprocs=50
-        out_q = Queue.Queue()
-        #print "urls====",urls
-        #print "nprocs=",nprocs
-        #print "out_q=",out_q
-        chunksize = int(math.ceil(len(items) / float(nprocs)))
-        procs = []
+    
+    #     workers = 2
+    #     work_queue = Queue()
+    #     done_queue = Queue()
+    #     processes = []
 
-        for i in range(nprocs):
-            p = multiprocessing.Process(
-                    target=worker,
-                    args=(urls[chunksize * i:chunksize * (i + 1)],
-                          out_q))
-            procs.append(p)
-            p.start()
+    #     for url in urls:
+    #         if ((url.find("http://") == -1) or (url.find("https://") == -1)):
+    #             url="http://"+ url
+    #         work_queue.put(url)
+    #         print "url",url
+    #         print "work_queue",work_queue.get()
 
-        # Collect all results into a single result dict. We know how many dicts
-        # with results to expect.
-        resultdict = {}
-        for i in range(nprocs):
-            resultdict.update(out_q.get())
+    #     for w in xrange(workers):
+    #         p = multiprocessing.Process(target=worker, args=(work_queue, done_queue))
+    #         p.start()
+    #         processes.append(p)
+    #         work_queue.put('STOP')
 
-        # Wait for all worker processes to finish
-        for p in procs:
-            p.join()
+    #     for p in processes:
+    #         p.join()
 
-        return resultdic
+    #     done_queue.put('STOP')
+
+    #     for status in iter(done_queue.get, 'STOP'):
+    #         print status
