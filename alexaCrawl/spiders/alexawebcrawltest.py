@@ -43,24 +43,79 @@ items=[]
 itemList=[]
 Final_items=[]
 
+
 class alexaSpider(CrawlSpider):
     name = "alexa"
     allowed_domains = ["alexa.com"]
-    start_urls = [
-        "http://www.alexa.com/topsites/",    
-    ]
+    start_urls = []
 
-    rules = [
-        Rule(sle(allow=("/topsites/global;0")), callback='parse_category_top', follow=True),
-        Rule(sle(allow=("/topsites/global;[0-9]"),restrict_xpaths=('//a[@class="next"]', )), callback='parse_category_top', follow=True),
-    ]
+    def __init__(self, name=None, url_list=""):
+        item = alexaSiteInfoItem()
+        item = self.name
+        #url=[]
+        #print "kwargs",kwargs
+        self.url_list= "%s" % url_list
+        # You can pass a specific url to retrieve
+        #if 'start_urls' in kwargs:
+         #   url=kwargs.pop('start_urls').split(',')
+        #super(Spider, self).__init__(name, **kwargs)
+        print "url",url_list
+        url=url_list.split(',')
+        print "url",url
+        print "url[0]",url[0]
+
+        for urlValue in url_list:
+            if urlValue:
+                if name is not None:
+                    self.name = name
+                elif not getattr(self, 'name', None):
+                    raise ValueError("%s must have a name" % type(self).__name__)
+                #self.__dict__.update(kwargs)
+                self.start_urls = [urlValue]
+            # else:
+            #     # If there is no specific URL get it from Database
+            #     wikiliks = # < -- CODE TO RETRIEVE THE LINKS FROM DB -->
+            #     if wikiliks == None:
+            #         print "**************************************"
+            #         print "No Links to Query"
+            #         print "**************************************"
+            #         return None
+
+            #     for link in wikiliks:
+            #         # SOME PROCESSING ON THE LINK GOES HERE
+            #         self.start_urls.append(urllib.unquote_plus(link[0]))
+
+
+
+
+
+# class alexaSpider(CrawlSpider):
+#     name = "alexa"
+#     allowed_domains = ["alexa.com"]
+#     start_urls = [
+#         "http://www.alexa.com/topsites/",    
+#     ]
+
+#     rules = [
+#         Rule(sle(allow=("/topsites/global;0")), callback='parse_category_top', follow=True),
+#         Rule(sle(allow=("/topsites/global;[0-9]"),restrict_xpaths=('//a[@class="next"]', )), callback='parse_category_top', follow=True),
+#     ]
     
-    global items,Final_items
-    items=[]
-    itemList=[]
-    Final_items=[]
-    global resultFile
-    resultFile = open("final.csv",'wbr+')
+#     global items,Final_items
+#     items=[]
+#     itemList=[]
+#     Final_items=[]
+#     global resultFile
+#     resultFile = open("final.csv",'wbr+')
+
+
+
+
+
+
+
+
+
 
     #function to retrieve links from alexa 
     # def parse_category_top(self, response):
