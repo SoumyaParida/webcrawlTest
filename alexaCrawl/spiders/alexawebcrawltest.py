@@ -144,13 +144,21 @@ class alexaSpider(CrawlSpider):
                     break
 
         
+        # 
+        #     print "eachList",eachList
+        #     finalItemList=[]
+        #     finalItemList=self.parse_sites(eachList,4)
+
+        # print "finalItemList",finalItemLis
         for eachList in listOfLists:
-            print "eachList",eachList
             for url in eachList:
                 print "iterate"
                 if ((url.find("http://") == -1) or (url.find("https://") == -1)):
                     url="http://"+ url
                 yield Request(url=url,callback=self.parse_details,dont_filter=True)
+            
+        #return status    
+                #yield Request(url=url,callback=self.parse_details,dont_filter=True)
 
                 # if (len(finalItemList)<50):
                 #     #if row
@@ -234,6 +242,85 @@ class alexaSpider(CrawlSpider):
         for item in itemList:
             wr.writerow([item,])
 
+    # def parse_sites(self,urls,nprocs):
+    #     def worker(urls, out_q):
+    #         """ The worker function, invoked in a process. 'urls' is a
+    #             list of numbers to parse. The results are placed in
+    #             a multiple lists that's are finally pushed to a queue.
+    #         """
+    #         outdict = []
+    #         print "soumya"
+    #         for url in urls:
+    #             print "url***********8",url
+    #             #item = alexaSiteInfoItem()
+    #             if ((url.find("http://") == -1) or (url.find("https://") == -1)):
+    #                 url="http://"+ url
+                
+    #             yield Request(url=url,callback=self.parse_details,dont_filter=True)
+
+    #             # crawler = CrawlerWorker(MySpider(myArgs), result_queue)   
+    #             # crawler.start()
+    #             #request=Request(url=value,callback=self.parse_details,dont_filter=True)
+    #             # for item in result_queue.get():
+    #             #      yield item
+    #             #return
+    #             #response = HtmlResponse(url=value)
+    #             #outdict =self.parse_details(response)
+    #             #print "outdict********************",outdict 
+    #         #return request
+    #             #outdict =self.parse_details(response)
+    #         #print "outdict********************",outdict
+    #         #out_q.put(outdict)
+            
+
+    #     # Each process will get 'chunksize' nums and a queue to put his out
+    #     # dict into
+    #     #proclist=[]
+    #     #nprocs=50
+    #     out_q = multiprocessing.Queue()
+    #     chunksize = int(math.ceil(len(urls) / float(nprocs)))
+    #     procs = []
+
+    #     for i in range(nprocs):
+    #         p = multiprocessing.Process(
+    #                 target=worker,
+    #                 args=(urls,out_q))
+    #         procs.append(p)
+    #         p.start()
+
+    #     # Collect all results into a single result dict. We know how many dicts
+    #     # with results to expect.
+    #     resultdict = {}
+    #     for i in range(nprocs):
+    #         resultdict.update(out_q.get())
+
+    #     # Wait for all worker processes to finish
+    #     for p in procs:
+    #         p.join()
+
+    #     return resultdic        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     # def parse_sites(self,urls):
     #     def worker(work_queue, done_queue):
     #         try:
@@ -282,3 +369,5 @@ class alexaSpider(CrawlSpider):
 
     #     for status in iter(done_queue.get, 'STOP'):
     #         print status
+    #     return status
+
