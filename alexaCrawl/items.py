@@ -1,8 +1,10 @@
 from scrapy.item import Item, Field
 
-class alexaSiteInfoItem(Item):
-    # define the fields for your item here like:
-    name = Field()
+class Page(Item):
+    url = Field()
+    title = Field()
+    body = Field()
+    size=Field()
     
     #description = Field()
     #category = Field()
