@@ -19,6 +19,7 @@ NEWSPIDER_MODULE = 'alexaCrawl.spiders'
 #RETRY_ENABLED = False
 #Some websites blocked the BOT using cookies.
 COOKIES_ENABLED = False
+DEPTH_LIMIT = 1
 
 #Instead of using multiple processes,we can start concurrent requests and assign number
 #of items to those request.If required we will implement multiple processes using "Scrapyd"
