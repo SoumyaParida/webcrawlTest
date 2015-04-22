@@ -119,7 +119,6 @@ class alexaSpider(Spider):
             page['newcookies'] = cookies
 
     def _set_DNS_info(self, page,response):
-        #domain=response.url
         CNAME=[]
         domain=response.url
         if domain.startswith('http://'):
@@ -129,6 +128,9 @@ class alexaSpider(Spider):
             domain=domain.replace("https://","",1)
             print "newdomain",domain
 
+        if domain.endswith('/'):
+            domain=domain.replace("/","",1)
+
         if not domain.startswith('www.'):
             domain = 'www.%s' % domain
         print "domain",domain
@@ -136,27 +138,29 @@ class alexaSpider(Spider):
 
         #domain = response.url
         try:
-            answers = dns.resolver.query('www.bmw.com', 'CNAME')
+            answers = dns.resolver.query(domain, 'CNAME')
+        
+            #print "domain",domain
+            #print ' query qname:', answers.qname, ' num ans.', len(answers)
+            for rdata in answers:
+                try:
+                    CNAME.append(rdata)
+                    while (rdata.target):
+                        value=dns.resolver.query(rdata.target, 'CNAME')
+                        for rdata in value:
+                            CNAME.append(rdata)
+                            print 'next cname value',value
+                except dns.resolver.NXDOMAIN:
+                    continue
+                except dns.resolver.Timeout:
+                    continue
+                except dns.exception.DNSException:
+                    continue
+                    #print "Unhandled exception"
+                except dns.resolver.NOAnswer:
+                    continue
         except dns.resolver.NXDOMAIN:
-            print "domain",domain
-        print ' query qname:', answers.qname, ' num ans.', len(answers)
-        for rdata in answers:
-            try:
-                CNAME.append(rdata)
-                while (rdata.target):
-                    value=dns.resolver.query(rdata.target, 'CNAME')
-                    for rdata in value:
-                        CNAME.append(rdata)
-                        print 'next cname value',value
-            except dns.resolver.NXDOMAIN:
-                continue
-            except dns.resolver.Timeout:
-                continue
-            except dns.exception.DNSException:
-                continue
-                #print "Unhandled exception"
-            except dns.resolver.NOAnswer:
-                continue
+            print "exception"
 
         page['CNAMEChain']=CNAME
         # if nameservers:
