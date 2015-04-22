@@ -49,21 +49,26 @@ class alexaSpider(Spider):
 
     def parse(self,response):
         # global items
-        items=[]
+        urlList=[]
         r=[]
         # item = Page(url=response.url)
         global resultFile
 
         page = self._get_item(response)
         r = [page]
-        urlList=[page]
+        #urlList=[page]
+        for pageValue in page:
+            urlList.append(page[pageValue])
         r.extend(self._extract_requests(response))
 
         '''commenting this part to use it later for 
         recurively using links'''
-        wr = csv.writer(resultFile, dialect='excel')
-        for item in urlList:
-            wr.writerow([item,])
+        #wr = csv.writer(resultFile,dialect='excel')
+        wr = csv.writer(resultFile, delimiter=',',
+                            quotechar=',', quoting=csv.QUOTE_MINIMAL)
+        #for item in urlList:
+        #wr.writerow([item,])
+        wr.writerow(urlList)
         return r
 
     """[Author:Som ,last modified:16th April 2015]
@@ -77,6 +82,7 @@ class alexaSpider(Spider):
         item = Page(url=response.url,content_length=str(len(response.body)),
             response_header=response.headers,response_meta=response.meta,
             response_connection=response.request.headers.get('Connection'))
+
         self._set_title(item, response)
         self._set_http_header_info(item,response)
         self._set_DNS_info(item,response)
@@ -119,32 +125,29 @@ class alexaSpider(Spider):
         if cookies:
             page['newcookies'] = cookies
 
+    """[Author:Som ,last modified:22th April 2015]
+        def _set_DNS_info:used to retrieve CNAME chain.
+    """
     def _set_DNS_info(self, page,response):
         CNAME=[]
         domain=response.url
+        #urlparse :This module defines a standard interface to break URL strings up 
+        #in components (addressing scheme, network location, path etc.), to combine
+        #the components back into a URL string, and to convert a relative URL to 
+        #an absolute URL given a base URL.
         domain=urlparse(domain).netloc
         if domain.startswith('http://'):
             domain=domain.replace("http://","",1)
-            #print "newdomain",domain
         elif domain.startswith('https://'):
             domain=domain.replace("https://","",1)
-            #print "newdomain",domain
 
         if domain.endswith('/'):
             domain=domain.replace("/","",1)
 
         if not domain.startswith('www.'):
             domain = 'www.%s' % domain
-        print "domain",domain
-
-
-        #domain = response.url
-
         try:
             answers = dns.resolver.query(domain, 'CNAME')
-        
-            #print "domain",domain
-            #print ' query qname:', answers.qname, ' num ans.', len(answers)
             for rdata in answers:
                 try:
                     CNAME.append(rdata)
@@ -159,7 +162,6 @@ class alexaSpider(Spider):
                     continue
                 except dns.exception.DNSException:
                     continue
-                    #print "Unhandled exception"
                 except dns.resolver.NoAnswer:
                     continue
             page['CNAMEChain']=CNAME
@@ -175,26 +177,3 @@ class alexaSpider(Spider):
         except dns.resolver.NoAnswer:
             CNAME.append('NONE')
             page['CNAMEChain']=CNAME
-
-        
-        # if nameservers:
-        #     page['CNAMEChain'] = nameservers
-
-
-        # dnsInfo=[]
-        # answers = dns.resolver.query(response.url, 'CNAME')
-        # page['CNAMEChain'] = answers
-        # for rdata in answers:
-        #     print ' cname target address:', rdata.target
-        # ADDITIONAL_RDCLASS = 65535
-        # name_server = '8.8.8.8'
-        # domain = dns.name.from_text(response.url)
-        # if not domain.is_absolute():
-        #     domain = domain.concatenate(dns.name.root)
-        # request = dns.message.make_query(domain, dns.rdatatype.ANY)
-        # request.flags |= dns.flags.AD
-        # request.find_rrset(request.additional, dns.name.root, ADDITIONAL_RDCLASS,
-        #                dns.rdatatype.OPT, create=True, force_unique=True)       
-        # response = dns.query.udp(request, name_server)
-        # if response:
-        #     page['CNAMEChain'] = response.authority
