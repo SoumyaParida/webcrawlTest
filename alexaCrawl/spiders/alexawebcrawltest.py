@@ -6,6 +6,7 @@ from scrapy.http import Request, HtmlResponse
 from scrapy.spider import Spider
 from scrapy.selector import Selector
 from scrapy.contrib.linkextractors import LinkExtractor
+from urlparse import urlparse
 from alexaCrawl.items import Page
 import dns.resolver
 import dns.name
@@ -32,7 +33,7 @@ class alexaSpider(Spider):
             url = 'http://%s' % url
         self.url = url
         self.allowed_domains = [re.sub(r'^www\.', '', urlparse(url).hostname)]
-        print "url inside init",url
+        #print "url inside init",url
         self.link_extractor = LinkExtractor()
         self.cookies_seen = set()
 
@@ -43,7 +44,6 @@ class alexaSpider(Spider):
     This method must return an iterable with the first Requests to 
     crawl for this spider."""
     def start_requests(self):
-        print "url",self.url
         request=Request(self.url,callback=self.parse,dont_filter=True)
         return [request]
 
@@ -53,6 +53,7 @@ class alexaSpider(Spider):
         r=[]
         # item = Page(url=response.url)
         global resultFile
+
         page = self._get_item(response)
         r = [page]
         urlList=[page]
@@ -94,23 +95,23 @@ class alexaSpider(Spider):
         return r
 
     def _set_title(self, page, response):
-        print "title"
+        #print "title"
         if isinstance(response, HtmlResponse):
             title = Selector(response).xpath("//title/text()").extract()
             if title:
                 page['title'] = title[0]
 
     def _set_http_header_info(self, page, response):
-        print "header"
+        #print "header"
         if isinstance(response, HtmlResponse):
             responseStatus = response.status
-            print "responseStatus",responseStatus
+            #print "responseStatus",responseStatus
             if responseStatus:
                 page['httpResponseStatus']=responseStatus
 
     def _set_new_cookies(self, page, response):
         cookies = []
-        print "cookies"
+        #print "cookies"
         for cookie in [x.split(';', 1)[0] for x in response.headers.getlist('Set-Cookie')]:
             if cookie not in self.cookies_seen:
                 self.cookies_seen.add(cookie)
@@ -121,12 +122,13 @@ class alexaSpider(Spider):
     def _set_DNS_info(self, page,response):
         CNAME=[]
         domain=response.url
+        domain=urlparse(domain).netloc
         if domain.startswith('http://'):
             domain=domain.replace("http://","",1)
-            print "newdomain",domain
+            #print "newdomain",domain
         elif domain.startswith('https://'):
             domain=domain.replace("https://","",1)
-            print "newdomain",domain
+            #print "newdomain",domain
 
         if domain.endswith('/'):
             domain=domain.replace("/","",1)
@@ -137,6 +139,7 @@ class alexaSpider(Spider):
 
 
         #domain = response.url
+
         try:
             answers = dns.resolver.query(domain, 'CNAME')
         
@@ -149,7 +152,7 @@ class alexaSpider(Spider):
                         value=dns.resolver.query(rdata.target, 'CNAME')
                         for rdata in value:
                             CNAME.append(rdata)
-                            print 'next cname value',value
+                            #print 'next cname value',value
                 except dns.resolver.NXDOMAIN:
                     continue
                 except dns.resolver.Timeout:
@@ -157,12 +160,23 @@ class alexaSpider(Spider):
                 except dns.exception.DNSException:
                     continue
                     #print "Unhandled exception"
-                except dns.resolver.NOAnswer:
+                except dns.resolver.NoAnswer:
                     continue
+            page['CNAMEChain']=CNAME
         except dns.resolver.NXDOMAIN:
-            print "exception"
+            CNAME.append('NONE')
+            page['CNAMEChain']=CNAME        
+        except dns.resolver.Timeout:
+            CNAME.append('NONE')
+            page['CNAMEChain']=CNAME
+        except dns.exception.DNSException:
+            CNAME.append('NONE')
+            page['CNAMEChain']=CNAME
+        except dns.resolver.NoAnswer:
+            CNAME.append('NONE')
+            page['CNAMEChain']=CNAME
 
-        page['CNAMEChain']=CNAME
+        
         # if nameservers:
         #     page['CNAMEChain'] = nameservers
 
