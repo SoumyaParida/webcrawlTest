@@ -13,6 +13,7 @@ class Page(Item):
     newcookies=Field()
     httpResponseStatus=Field()
     response_meta=Field()
+    CNAMEChain=Field()
     
     #description = Field()
     #category = Field()

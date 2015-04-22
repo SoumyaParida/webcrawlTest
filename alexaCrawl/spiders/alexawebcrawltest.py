@@ -7,6 +7,11 @@ from scrapy.spider import Spider
 from scrapy.selector import Selector
 from scrapy.contrib.linkextractors import LinkExtractor
 from alexaCrawl.items import Page
+import dns.resolver
+import dns.name
+import dns.message
+import dns.query
+import dns.flags
 #from scrapy.stats import stats
 
 class alexaSpider(Spider):
@@ -14,7 +19,7 @@ class alexaSpider(Spider):
     name = 'alexa'
     items=[]
     global resultFile
-    resultFile = open("output5.csv",'wbr+')
+    resultFile = open("output6.csv",'wbr+')
 
     """[Author:Som ,last modified:16th April 2015]
     def __init__ :this act as constructor for python
@@ -24,9 +29,10 @@ class alexaSpider(Spider):
         super(alexaSpider, self).__init__(**kw)
         url = kw.get('url') or kw.get('domain')
         if not url.startswith('http://') and not url.startswith('https://'):
-            url = 'http://%s/' % url
+            url = 'http://%s' % url
         self.url = url
         self.allowed_domains = [re.sub(r'^www\.', '', urlparse(url).hostname)]
+        print "url inside init",url
         self.link_extractor = LinkExtractor()
         self.cookies_seen = set()
 
@@ -49,12 +55,13 @@ class alexaSpider(Spider):
         global resultFile
         page = self._get_item(response)
         r = [page]
+        urlList=[page]
         r.extend(self._extract_requests(response))
 
         '''commenting this part to use it later for 
         recurively using links'''
         wr = csv.writer(resultFile, dialect='excel')
-        for item in r:
+        for item in urlList:
             wr.writerow([item,])
         return r
 
@@ -71,6 +78,7 @@ class alexaSpider(Spider):
             response_connection=response.request.headers.get('Connection'))
         self._set_title(item, response)
         self._set_http_header_info(item,response)
+        self._set_DNS_info(item,response)
         return item
 
     """[Author:Som ,last modified:16th April 2015]
@@ -109,3 +117,66 @@ class alexaSpider(Spider):
                 cookies.append(cookie)
         if cookies:
             page['newcookies'] = cookies
+
+    def _set_DNS_info(self, page,response):
+        #domain=response.url
+        CNAME=[]
+        domain=response.url
+        if domain.startswith('http://'):
+            domain=domain.replace("http://","",1)
+            print "newdomain",domain
+        elif domain.startswith('https://'):
+            domain=domain.replace("https://","",1)
+            print "newdomain",domain
+
+        if not domain.startswith('www.'):
+            domain = 'www.%s' % domain
+        print "domain",domain
+
+
+        #domain = response.url
+        try:
+            answers = dns.resolver.query('www.bmw.com', 'CNAME')
+        except dns.resolver.NXDOMAIN:
+            print "domain",domain
+        print ' query qname:', answers.qname, ' num ans.', len(answers)
+        for rdata in answers:
+            try:
+                CNAME.append(rdata)
+                while (rdata.target):
+                    value=dns.resolver.query(rdata.target, 'CNAME')
+                    for rdata in value:
+                        CNAME.append(rdata)
+                        print 'next cname value',value
+            except dns.resolver.NXDOMAIN:
+                continue
+            except dns.resolver.Timeout:
+                continue
+            except dns.exception.DNSException:
+                continue
+                #print "Unhandled exception"
+            except dns.resolver.NOAnswer:
+                continue
+
+        page['CNAMEChain']=CNAME
+        # if nameservers:
+        #     page['CNAMEChain'] = nameservers
+
+
+        # dnsInfo=[]
+        # answers = dns.resolver.query(response.url, 'CNAME')
+        # page['CNAMEChain'] = answers
+        # for rdata in answers:
+        #     print ' cname target address:', rdata.target
+        # ADDITIONAL_RDCLASS = 65535
+        # name_server = '8.8.8.8'
+        # domain = dns.name.from_text(response.url)
+        # if not domain.is_absolute():
+        #     domain = domain.concatenate(dns.name.root)
+        # request = dns.message.make_query(domain, dns.rdatatype.ANY)
+        # request.flags |= dns.flags.AD
+        # request.find_rrset(request.additional, dns.name.root, ADDITIONAL_RDCLASS,
+        #                dns.rdatatype.OPT, create=True, force_unique=True)       
+        # response = dns.query.udp(request, name_server)
+        # if response:
+        #     page['CNAMEChain'] = response.authority
