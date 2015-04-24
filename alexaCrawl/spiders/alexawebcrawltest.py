@@ -6,6 +6,7 @@ from scrapy.http import Request, HtmlResponse
 from scrapy.spider import Spider
 from scrapy.selector import Selector
 from scrapy.contrib.linkextractors import LinkExtractor
+from sets import Set
 from urlparse import urlparse
 from alexaCrawl.items import Page
 import dns.resolver
@@ -13,6 +14,9 @@ import dns.name
 import dns.message
 import dns.query
 import dns.flags
+import codecs
+import sys
+import random
 #from scrapy.stats import stats
 
 class alexaSpider(Spider):
@@ -20,7 +24,9 @@ class alexaSpider(Spider):
     name = 'alexa'
     items=[]
     global resultFile
-    resultFile = open("output6.csv",'wbr+')
+    
+    #resultFile = codecs.open("output6.csv",mode='wb',encoding='utf-8')
+    resultFile = codecs.open("output6.csv",'wbr+')
 
     """[Author:Som ,last modified:16th April 2015]
     def __init__ :this act as constructor for python
@@ -37,6 +43,8 @@ class alexaSpider(Spider):
         self.link_extractor = LinkExtractor()
         self.cookies_seen = set()
 
+        
+
     """[Author:Som ,last modified:15th April 2015]
     start_requests:Overriding method of scrapy.spider.Spider class. 
     This is the method called by Scrapy when the spider is opened 
@@ -44,6 +52,7 @@ class alexaSpider(Spider):
     This method must return an iterable with the first Requests to 
     crawl for this spider."""
     def start_requests(self):
+        #index=random.randint(1, 20)
         request=Request(self.url,callback=self.parse,dont_filter=True)
         return [request]
 
@@ -53,8 +62,7 @@ class alexaSpider(Spider):
         r=[]
         # item = Page(url=response.url)
         global resultFile
-
-        page = self._get_item(response)
+        page = self._get_item(response)  
         r = [page]
         #urlList=[page]
         for pageValue in page:
@@ -64,11 +72,45 @@ class alexaSpider(Spider):
         '''commenting this part to use it later for 
         recurively using links'''
         #wr = csv.writer(resultFile,dialect='excel')
+        #nbytes = {'utf-32':4}.get(encoding, 1) 
         wr = csv.writer(resultFile, delimiter=',',
-                            quotechar=',', quoting=csv.QUOTE_MINIMAL)
-        #for item in urlList:
-        #wr.writerow([item,])
-        wr.writerow(urlList)
+                            quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+        # for item in urlList:
+        #     if isinstance(item, unicode):
+        #         item = item
+        #     elif isinstance( item, ( int, long ) ):
+        #         item=item
+        #     elif item is None:
+        #         item=item
+        #     elif isinstance(item,str):
+        #         item=item
+        #     else:
+        #         item = item.decode('utf-8')
+        # for item in urlList:
+        #     if isinstance(item, str):
+        #         item = item.decode('utf-8')
+        #         wr.writerow([item,])
+        #     elif isinstance(item, unicode):
+        #         item = item
+        #         wr.writerow([item,])
+        #     else:
+        #         item = item
+        #         wr.writerow([item,])
+        
+        #self.current_link.text = self.current_link.text + data.strip() 
+        newUrlList=[]
+        for item in urlList:
+            if isinstance(item, unicode):
+                item=item.encode('utf-8')
+                newUrlList.append(item)
+            elif isinstance(item,str):
+                item=item
+                newUrlList.append(item)
+            else:
+                item=item
+                newUrlList.append(item)
+
+        wr.writerow(newUrlList)
         return r
 
     """[Author:Som ,last modified:16th April 2015]
@@ -79,12 +121,12 @@ class alexaSpider(Spider):
     @scrapes title which will stored in csv file
     """
     def _get_item(self, response):
-        item = Page(url=response.url,content_length=str(len(response.body)),
-            response_header=response.headers,response_meta=response.meta,
-            response_connection=response.request.headers.get('Connection'))
-
-        self._set_title(item, response)
+        item = Page(url=response.url,content_length=str(len(response.body)))
+            #response_header=response.headers,response_meta=response.meta,
+            #response_connection=response.request.headers.get('Connection'))
         self._set_http_header_info(item,response)
+        self._set_new_cookies(item,response)
+        #self._set_title(item, response)
         self._set_DNS_info(item,response)
         return item
 
@@ -107,6 +149,12 @@ class alexaSpider(Spider):
             if title:
                 page['title'] = title[0]
 
+    """[Author:Som ,last modified:16th April 2015]
+    def _set_http_header_info:used to crawl response status of
+    any website like 200 : ok ,404 :not found etc.
+
+    @returns responseStatus
+    """
     def _set_http_header_info(self, page, response):
         #print "header"
         if isinstance(response, HtmlResponse):
@@ -114,7 +162,12 @@ class alexaSpider(Spider):
             #print "responseStatus",responseStatus
             if responseStatus:
                 page['httpResponseStatus']=responseStatus
-
+            else :
+                page['httpResponseStatus']="-"
+    """[Author:Som ,last modified:16th April 2015]
+    def _set_new_cookies:used to crawl cookies of
+    any website.
+    """
     def _set_new_cookies(self, page, response):
         cookies = []
         #print "cookies"
@@ -124,6 +177,8 @@ class alexaSpider(Spider):
                 cookies.append(cookie)
         if cookies:
             page['newcookies'] = cookies
+        else:
+            page['newcookies'] = "-"
 
     """[Author:Som ,last modified:22th April 2015]
         def _set_DNS_info:used to retrieve CNAME chain.
@@ -164,16 +219,17 @@ class alexaSpider(Spider):
                     continue
                 except dns.resolver.NoAnswer:
                     continue
-            page['CNAMEChain']=CNAME
+            if CNAME:
+                page['CNAMEChain']=CNAME
+            else:
+                page['CNAMEChain']="-"
         except dns.resolver.NXDOMAIN:
-            CNAME.append('NONE')
-            page['CNAMEChain']=CNAME        
+            # CNAME.append('NONE')
+            # page['CNAMEChain']=CNAME 
+            page['CNAMEChain']="-"       
         except dns.resolver.Timeout:
-            CNAME.append('NONE')
-            page['CNAMEChain']=CNAME
+            page['CNAMEChain']="-"
         except dns.exception.DNSException:
-            CNAME.append('NONE')
-            page['CNAMEChain']=CNAME
+            page['CNAMEChain']="-"
         except dns.resolver.NoAnswer:
-            CNAME.append('NONE')
-            page['CNAMEChain']=CNAME
+            page['CNAMEChain']="-"
