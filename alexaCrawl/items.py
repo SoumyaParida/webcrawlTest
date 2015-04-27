@@ -2,6 +2,7 @@ from scrapy.item import Item, Field
 
 class Page(Item):
     index=Field()
+
     url = Field()
     depth_level=Field()
     #title = Field()
@@ -15,7 +16,7 @@ class Page(Item):
     referer=Field()
     newcookies=Field()
     httpResponseStatus=Field()
-    #response_meta=Field()
+    response_meta=Field()
     CNAMEChain=Field()
     
     #description = Field()
