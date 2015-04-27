@@ -5,7 +5,8 @@ from urlparse import urlparse
 from scrapy.http import Request, HtmlResponse
 from scrapy.spider import Spider
 from scrapy.selector import Selector
-from scrapy.contrib.linkextractors import LinkExtractor
+from scrapy.contrib.linkextractors import LinkExtractor as sle
+#from scrapy.contrib.linkextractors.sgml import LinkExtractor as sgml
 from sets import Set
 from urlparse import urlparse
 from alexaCrawl.items import Page
@@ -30,11 +31,15 @@ class alexaSpider(Spider):
     global resultFile
     global counter
     global depth_counter
+    global tagType
+    global testFile
     counter=0
     depth_counter=0
+    tagType='A'
     
     #resultFile = codecs.open("output6.csv",mode='wb',encoding='utf-8')
     resultFile = codecs.open("output6.csv",'wbr+')
+    testFile = codecs.open("output7.csv",'wbr+')
 
     """[Author:Som ,last modified:16th April 2015]
     def __init__ :this act as constructor for python
@@ -48,7 +53,7 @@ class alexaSpider(Spider):
         self.url = url
         self.allowed_domains = [re.sub(r'^www\.', '', urlparse(url).hostname)]
         #print "url inside init",url
-        self.link_extractor = LinkExtractor()
+        self.link_extractor = sle()
         self.cookies_seen = set()
 
         
@@ -71,6 +76,7 @@ class alexaSpider(Spider):
         global items
         urlList=[]
         r=[]
+        #tagType='A'
         # item = Page(url=response.url)
         global resultFile
         page = self._get_item(response)
@@ -88,22 +94,40 @@ class alexaSpider(Spider):
         if depth_value:
             page['depth_level'] = depth_value
         else:
-            page['depth_level']=depth_value
+            page['depth_level']='0'
 
-        page['index']=response.meta['counter']
+        #page['index']=response.meta['counter']
+        counter=response.meta.get('counter')
+        
+        if counter:
+            page['index']=counter
+        else :
+            page['index']='1'
+        #if response.meta['tagType']:
+        #page['tagType']=
+        tagType=response.meta.get('tagType')  
+        if tagType:
+            page['tagType']=tagType        
+        else:
+            page['tagType']='A'
+        #else:
+        #    page['tagType']=tagType
+        
         r = [page]
         #urlList=[page]
 
+        # '''commenting this part to use it later for 
+        # recurively using links
         for pageValue in page:
             urlList.append(page[pageValue])
-        r.extend(self._extract_requests(response,str(response.meta['counter'])))
-        #counter=counter+1
-
-
-        '''commenting this part to use it later for 
-        recurively using links'''
-        wr = csv.writer(resultFile, delimiter=',',
-                            quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+        #r.extend(self._extract_requests(response,str(response.meta['counter']))) #external site link
+        r.extend(self._extract_requests(response,counter)) #external site link
+        r.extend(self._extract_img_requests(response,tagType)) #link to img files
+        r.extend(self._extract_script_requests(response,tagType)) #link to script files like java script etc
+        r.extend(self._extract_external_link_requests(response,tagType)) #link to css or any other external linked files
+        r.extend(self._extract_embed_requests(response,tagType)) #link to addresses of the external file to embed
+        
+        wr = csv.writer(resultFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
         newUrlList=[]
         for item in urlList:
             if isinstance(item, unicode):
@@ -118,56 +142,6 @@ class alexaSpider(Spider):
 
         wr.writerow(newUrlList)
         return r
-        # global counter
-        # global resultFile
-        # global depth_counter
-        # nextdepthUrlList=[]
-        # #lock=Lock()
-        # #lock.acquire()
-        # Threadlock = threading.Lock()
-        # page = self._get_item(response)
-        # depth = str(page['depth_level'])
-        # if 'depth' in depth:
-        #     depth='1'
-        # else:
-        #     depth='0'
-
-        # page['depth_level'] = eval(depth)
-
-        # Threadlock.acquire()
-        # counter=counter+1
-        # #page['depth_level']=response.meta['depth']
-        # page['index']=counter
-        # r = [page]
-        # urlList=[page]
-        # Threadlock.release()
-        # r.extend(self._extract_requests(response))
-
-        # wr = csv.writer(resultFile, delimiter=',',
-        #                     quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-        
-        
-        # wr.writerow(r)
-        # return r
-
-        # page['depth_level']=0
-        # pageValue=1
-        # for pageValue in page:
-        #    urlList.append(page[pageValue])
-        
-        
-        #lock.release()
-        #r.extend(self._extract_requests(response))
-        # Threadlock = threading.Lock()
-        # Threadlock.acquire()
-        # page = self._get_item(response)
-        # r = [page]
-        # # rValue=1
-        # # for rValue in r:
-        # #     nextdepthUrlList.append(r[rValue])
-        # #     rValue=rValue+1
-        # Threadlock.release()
-        
 
     """[Author:Som ,last modified:16th April 2015]
     def _get_item:used to crawl items.
@@ -177,8 +151,6 @@ class alexaSpider(Spider):
     @scrapes title which will stored in csv file
     """
     def _get_item(self, response):
-        # global counter
-        # counter=counter+1
         item = Page(url=response.url,content_length=str(len(response.body)),depth_level=response.meta)
             #response_header=response.headers,response_meta=response.meta,
             #response_connection=response.request.headers.get('Connection'))
@@ -200,10 +172,50 @@ class alexaSpider(Spider):
         if isinstance(response, HtmlResponse):
             links = self.link_extractor.extract_links(response)
             r.extend(Request(x.url, callback=self.parse,meta={'counter': counterValue})for x in links if x.url != response.url)
+
+        return r
+
+    def _extract_img_requests(self,response,tag):
+        r = []
+        if isinstance(response, HtmlResponse):
+            tag='I'
+            sites = Selector(response).xpath("//img/@src").extract()
+            wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            wr.writerow(sites)
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag})for site in sites if site.startswith("http://") or site.startswith("https://"))
+        return r
+
+    def _extract_script_requests(self,response,tag):
+        r=[]
+        if isinstance(response, HtmlResponse):
+            tag='S'
+            sites = Selector(response).xpath("//script/@src").extract()
+            wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            wr.writerow(sites)
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag})for site in sites if site.startswith("http://") or site.startswith("https://"))
+        return r
+
+    def _extract_external_link_requests(self,response,tag):
+        r=[]
+        if isinstance(response, HtmlResponse):
+            tag='L'
+            sites = Selector(response).xpath("//link/@href").extract()
+            wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            wr.writerow(sites)
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag})for site in sites if site.startswith("http://") or site.startswith("https://"))
+        return r
+
+    def _extract_embed_requests(self,response,tag):
+        r=[]
+        if isinstance(response, HtmlResponse):
+            tag='E'
+            sites = Selector(response).xpath("//embed/@src").extract()
+            wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            wr.writerow(sites)
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag})for site in sites if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _set_title(self, page, response):
-        #print "title"
         if isinstance(response, HtmlResponse):
             title = Selector(response).xpath("//title/text()").extract()
             if title:
@@ -216,7 +228,6 @@ class alexaSpider(Spider):
     @returns responseStatus
     """
     def _set_http_header_info(self, page, response):
-        #print "header"
         if isinstance(response, HtmlResponse):
             responseStatus = response.status
             #print "responseStatus",responseStatus
@@ -230,7 +241,6 @@ class alexaSpider(Spider):
     """
     def _set_new_cookies(self, page, response):
         cookies = []
-        #print "cookies"
         for cookie in [x.split(';', 1)[0] for x in response.headers.getlist('Set-Cookie')]:
             if cookie not in self.cookies_seen:
                 self.cookies_seen.add(cookie)

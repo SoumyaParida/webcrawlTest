@@ -18,6 +18,7 @@ class Page(Item):
     httpResponseStatus=Field()
     response_meta=Field()
     CNAMEChain=Field()
+    tagType=Field()
     
     #description = Field()
     #category = Field()
