@@ -150,7 +150,7 @@ class alexaSpider(Spider):
         #     urlList.append(page[pageValue])
         #r.extend(self._extract_requests(response,str(response.meta['counter']))) #external site link
         r.extend(self._extract_requests(response,counter)) #external site link
-        #r.extend(self._extract_img_requests(response,tagType,counter)) #link to img files
+        r.extend(self._extract_img_requests(response,tagType,counter)) #link to img files
         r.extend(self._extract_script_requests(response,tagType,counter)) #link to script files like java script etc
         r.extend(self._extract_external_link_requests(response,tagType,counter)) #link to css or any other external linked files
         r.extend(self._extract_embed_requests(response,tagType,counter)) #link to addresses of the external file to embed
@@ -218,90 +218,75 @@ class alexaSpider(Spider):
 
     def _extract_img_requests(self,response,tag,counter):
         r = []
+        siteList=[]
         if isinstance(response, HtmlResponse):
             tag='I'
             counterValueImg=counter
             sites = Selector(response).xpath("//img/@src").extract()
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-            # for item in sites:
-            #     if isinstance(item, unicode):
-            #         item=item.encode('utf-8')
-            #         sites.append(item)
-            #     elif isinstance(item,str):
-            #         item=item
-            #         sites.append(item)
-            #     else:
-            #         item=item
-            #         sites.append(item)
-            #sites.append(counterValueImg)
-            wr.writerow(sites)
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueImg})for site in sites if site.startswith("http://") or site.startswith("https://"))
+            for item in sites:
+                if isinstance(item, unicode):
+                    item=item.encode('utf-8')
+                    siteList.append(item)
+                else:
+                    siteList.append(item)
+            wr.writerow(siteList)
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueImg})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _extract_script_requests(self,response,tag,counter):
         r=[]
+        siteList=[]
         if isinstance(response, HtmlResponse):
             tag='S'
             counterValueScript=counter
             sites = Selector(response).xpath("//script/@src").extract()
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-            # for item in sites:
-            #     if isinstance(item, unicode):
-            #         item=item.encode('utf-8')
-            #         sites.append(item)
-            #     elif isinstance(item,str):
-            #         item=item
-            #         sites.append(item)
-            #     else:
-            #         item=item
-            #         sites.append(item)
-            #sites.append(counterValueScript)
-            wr.writerow(sites)
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueScript})for site in sites if site.startswith("http://") or site.startswith("https://"))
+            for item in sites:
+                if isinstance(item, unicode):
+                    item=item.encode('utf-8')
+                    siteList.append(item)
+                else:
+                    siteList.append(item)
+            wr.writerow(siteList)
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueScript})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _extract_external_link_requests(self,response,tag,counter):
         r=[]
+        siteList=[]
         if isinstance(response, HtmlResponse):
             tag='L'
             counterValueLink=counter
             sites = Selector(response).xpath("//link/@href").extract()
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-            # for item in sites:
-            #     if isinstance(item, unicode):
-            #         item=item.encode('utf-8')
-            #         sites.append(item)
-            #     elif isinstance(item,str):
-            #         item=item
-            #         sites.append(item)
-            #     else:
-            #         item=item
-            #         sites.append(item)
-            #sites.append(counterValueLink)
-            wr.writerow(sites)
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueLink})for site in sites if site.startswith("http://") or site.startswith("https://"))
+            for item in sites:
+                if isinstance(item, unicode):
+                    item=item.encode('utf-8')
+                    siteList.append(item)
+                else:
+                    siteList.append(item)
+            sites.append(counterValueLink)
+            wr.writerow(siteList)
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueLink})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _extract_embed_requests(self,response,tag,counter):
         r=[]
+        siteList=[]
         if isinstance(response, HtmlResponse):
             tag='E'
             counterValueEmded=counter
             sites = Selector(response).xpath("//embed/@src").extract()
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-            # for item in sites:
-            #     if isinstance(item, unicode):
-            #         item=item.encode('utf-8')
-            #         sites.append(item)
-            #     elif isinstance(item,str):
-            #         item=item
-            #         sites.append(item)
-            #     else:
-            #         item=item
-            #         sites.append(item)
-            #sites.append(counterValueEmded)
-            wr.writerow(sites)
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueEmded})for site in sites if site.startswith("http://") or site.startswith("https://"))
+            for item in sites:
+                if isinstance(item, unicode):
+                    item=item.encode('utf-8')
+                    siteList.append(item)
+                else:
+                    siteList.append(item)
+            wr.writerow(siteList)
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueEmded})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _set_title(self, page, response):
