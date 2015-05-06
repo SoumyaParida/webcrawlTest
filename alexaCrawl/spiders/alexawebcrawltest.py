@@ -20,6 +20,7 @@ import sys
 import random
 import threading
 import time
+from ipwhois import IPWhois
 #from multiprocessing import Process, Value,Lock
 from multiprocessing import Process, Lock
 from multiprocessing.sharedctypes import Value
@@ -94,7 +95,7 @@ class alexaSpider(Spider):
         
         # with counter.get_lock():
         #     counter.value += 1
-        time.sleep(0.01)
+        #time.sleep(0.01)
         counter.increment()
         request=Request(self.url,callback=self.parse,meta={'counter': counter.value()},dont_filter=True)
         #lock.release()
@@ -166,8 +167,13 @@ class alexaSpider(Spider):
         urlList.append(page['tagType'])
         cname=';'.join(page['CNAMEChain'])
         urlList.append(cname)
+        dest_server_ip=';'.join(page['dest_server_IP'])
+        urlList.append(dest_server_ip)
+        asn_no=';'.join(page['ASN_Number'])
+        urlList.append(asn_no)
+        #urlList.append(page['ASN_Number'])
         
-        wr = csv.writer(resultFile, skipinitialspace=True,delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+        wr = csv.writer(resultFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
         newUrlList=[]
         for item in urlList:
             if isinstance(item, unicode):
@@ -333,6 +339,8 @@ class alexaSpider(Spider):
     """
     def _set_DNS_info(self, page,response):
         CNAME=[]
+        dest_server_ip=[]
+        dest_ASN=[]
         domain=response.url
         #urlparse :This module defines a standard interface to break URL strings up 
         #in components (addressing scheme, network location, path etc.), to combine
@@ -351,6 +359,7 @@ class alexaSpider(Spider):
             domain = 'www.%s' % domain
         try:
             answers = dns.resolver.query(domain, 'CNAME')
+            destServerIPs = dns.resolver.query(domain, 'A')
             for rdata in answers:
                 try:
                     CNAME.append(str(rdata))
@@ -366,10 +375,38 @@ class alexaSpider(Spider):
                     continue
                 except dns.resolver.NoAnswer:
                     continue
+
+            for rdata in destServerIPs:
+                try:
+                    dest_server_ip.append(str(rdata))
+                    asn_info=IPWhois(str(rdata))
+                    results = asn_info.lookup()
+                    #mydict.keys()[mydict.values().index(16)] 
+                    dest_ASN.append(results['asn'])
+                except dns.resolver.NXDOMAIN:
+                    continue
+                except dns.resolver.Timeout:
+                    continue
+                except dns.exception.DNSException:
+                    continue
+                except dns.resolver.NoAnswer:
+                    continue
+
             if CNAME:
                 page['CNAMEChain']=CNAME
             else:
                 page['CNAMEChain']="-"
+
+            if dest_server_ip:
+                page['dest_server_IP']=dest_server_ip
+            else:
+                page['dest_server_IP']='-'
+
+            if dest_ASN:
+                page['ASN_Number']=dest_ASN
+            else:
+                page['ASN_Number']='-'
+
         except dns.resolver.NXDOMAIN:
             # CNAME.append('NONE')
             # page['CNAMEChain']=CNAME 

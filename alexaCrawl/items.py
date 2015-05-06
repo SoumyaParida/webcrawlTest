@@ -10,6 +10,8 @@ class Page(Item):
     tagType=Field()
     CNAMEChain=Field()
     response_meta=Field()
+    dest_server_IP=Field()
+    ASN_Number=Field()
     
     #depth_level=Field()
     #title = Field()
