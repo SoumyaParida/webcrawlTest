@@ -1,6 +1,6 @@
 import re
 import csv
-import scrapy.crawler
+import scrapy.crawler 
 from urlparse import urlparse
 from scrapy.http import Request, HtmlResponse
 from scrapy.spider import Spider
@@ -25,6 +25,8 @@ from ipwhois import IPWhois
 from multiprocessing import Process, Lock
 from multiprocessing.sharedctypes import Value
 import threading
+from datetime import datetime
+#import scrapy.statscol
 
 class Counter(object):
     def __init__(self, initval=0):
@@ -171,6 +173,12 @@ class alexaSpider(Spider):
         urlList.append(dest_server_ip)
         asn_no=';'.join(page['ASN_Number'])
         urlList.append(asn_no)
+        urlList.append(page['start_time'])
+        page['end_time']=datetime.now().time()
+        urlList.append(page['end_time'])
+        #urlList.append(page['response_header'])
+        #urlList.append(page['response_meta'])
+        #urlList.append (page['StartDate'])
         #urlList.append(page['ASN_Number'])
         
         wr = csv.writer(resultFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
@@ -198,8 +206,8 @@ class alexaSpider(Spider):
     """
     def _get_item(self, response):
         item = Page(url=response.url,content_length=str(len(response.body)),depth_level=response.meta,
-            httpResponseStatus=response.status)
-            #response_header=response.headers,response_meta=response.meta,
+            httpResponseStatus=response.status,start_time= datetime.now().time())
+            #response_header=response.headers,response_meta=response.meta,start_time= datetime.now())
             #response_connection=response.request.headers.get('Connection'))
         
         #self._set_http_header_info(item,response)
@@ -383,6 +391,7 @@ class alexaSpider(Spider):
                     results = asn_info.lookup()
                     #mydict.keys()[mydict.values().index(16)] 
                     dest_ASN.append(results['asn'])
+                    #dest_ASN.append(results)
                 except dns.resolver.NXDOMAIN:
                     continue
                 except dns.resolver.Timeout:

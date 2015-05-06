@@ -12,6 +12,8 @@ class Page(Item):
     response_meta=Field()
     dest_server_IP=Field()
     ASN_Number=Field()
+    start_time=Field()
+    end_time=Field()
     
     #depth_level=Field()
     #title = Field()
