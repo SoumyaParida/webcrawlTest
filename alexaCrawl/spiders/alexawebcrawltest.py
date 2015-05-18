@@ -20,12 +20,15 @@ import sys
 import random
 import threading
 import time
+import ipwhois
 from ipwhois import IPWhois
 #from multiprocessing import Process, Value,Lock
 from multiprocessing import Process, Lock
 from multiprocessing.sharedctypes import Value
 import threading
 from datetime import datetime
+from operator import itemgetter, attrgetter
+import logging
 #import scrapy.statscol
 
 class Counter(object):
@@ -52,13 +55,24 @@ class alexaSpider(Spider):
     global depth_counter
     global tagType
     global testFile
+    global logFile
+    global dest_server_ip
+    dest_server_ip=[]
+    global dest_ASN
+    dest_ASN=[]
     counter=Counter(0)
     depth_counter=0
     tagType='A'
+    global distinct_asn
+    distinct_asn=[]
+    asn_counter=Counter(0)
+    #global destIP
+    #destIP=''
     
     #resultFile = codecs.open("output6.csv",mode='wb',encoding='utf-8')
     resultFile = codecs.open("output6.csv",'wbr+')
     testFile = codecs.open("output7.csv",'wbr+')
+    logFile = codecs.open("log.csv",'wbr+')
 
     """[Author:Som ,last modified:16th April 2015]
     def __init__ :this act as constructor for python
@@ -105,6 +119,8 @@ class alexaSpider(Spider):
 
     def parse(self,response):
         global items
+        #global destIP
+        #destIP=''
         urlList=[]
         r=[]
         #tagType='A'
@@ -144,6 +160,27 @@ class alexaSpider(Spider):
         #else:
         #    page['tagType']=tagType
         
+        imgcount=response.meta.get('Imgcount')
+        if imgcount:
+            page['ImgCount']=imgcount        
+        else:
+            page['ImgCount']='-'
+        scriptcount=response.meta.get('Scriptcount')
+        if scriptcount:
+            page['ScriptCount']=scriptcount        
+        else:
+            page['ScriptCount']='-'
+        linkcount=response.meta.get('Linkcount')
+        if linkcount:
+            page['LinkCount']=linkcount        
+        else:
+            page['LinkCount']='-'
+        embededcount=response.meta.get('Embededcount')
+        if embededcount:
+            page['EmbededCount']=embededcount        
+        else:
+            page['EmbededCount']='-'
+
         r = [page]
         #urlList=[page]
 
@@ -158,8 +195,9 @@ class alexaSpider(Spider):
         r.extend(self._extract_external_link_requests(response,tagType,counter)) #link to css or any other external linked files
         r.extend(self._extract_embed_requests(response,tagType,counter)) #link to addresses of the external file to embed
         
-        
+        #index=str(page['index'])
         urlList.append(page['index'])
+        #urlList=page['index']
         urlList.append(page['depth_level'])
         urlList.append(page['httpResponseStatus'])
         urlList.append(page['content_length'])
@@ -169,10 +207,31 @@ class alexaSpider(Spider):
         urlList.append(page['tagType'])
         cname=';'.join(page['CNAMEChain'])
         urlList.append(cname)
-        dest_server_ip=';'.join(page['dest_server_IP'])
-        urlList.append(dest_server_ip)
-        asn_no=';'.join(page['ASN_Number'])
-        urlList.append(asn_no)
+        dest_server_ip_values=';'.join(dest_server_ip)
+        if dest_server_ip_values:
+            urlList.append(dest_server_ip_values)
+        else:
+            urlList.append('-')
+        asn_no=';'.join(dest_ASN)
+        if asn_no:
+            urlList.append(asn_no)
+        else :
+            urlList.append('-')
+        urlList.append(page['ImgCount'])
+        urlList.append(page['ScriptCount'])
+        urlList.append(page['LinkCount'])
+        urlList.append(page['EmbededCount'])
+        
+        # if page['destIP']:
+        #     dest_server_ip_values=';'.join(page['destIP'])
+        #     urlList.append(dest_server_ip_values)
+        # else:
+        #     urlList.append('-')
+        # if page['ASN_Number']:
+        #     urlList.append(asn_no)
+        # else:
+        #     urlList.append('-')
+
         urlList.append(page['start_time'])
         page['end_time']=datetime.now().time()
         urlList.append(page['end_time'])
@@ -180,8 +239,9 @@ class alexaSpider(Spider):
         #urlList.append(page['response_meta'])
         #urlList.append (page['StartDate'])
         #urlList.append(page['ASN_Number'])
-        
+        #sorted(urlList, key=itemgetter(0))
         wr = csv.writer(resultFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+        #wr = csv.writer(resultFile, skipinitialspace=True,delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
         newUrlList=[]
         for item in urlList:
             if isinstance(item, unicode):
@@ -194,8 +254,34 @@ class alexaSpider(Spider):
                 item=item
                 newUrlList.append(item)
 
+        # for item in newUrlList:
+        #     if item[]
+        #newUrlList=sorted(newUrlList, key=attrgetter(page['index']))
+
         wr.writerow(newUrlList)
+        # csv_f = csv.reader(resultFile)
+        # index_set = set()
+        # for row in csv_f:
+        #     index_set.add(row[0])
+
+        # for idx in index_set:
+        #     f.seek(0)
+        #     unique_asn = set ()
+        #     for row in csv_f:
+        #         if row[0] == idx:
+        #             unique_asn.add(row[9])
+
+        # for row in csv_f:
+        #     if row[0] ==idx:
+        #         wr.writerow(newUrlList+str(len(unique_asn)))
+        #     else:
+        #         wr.writerow(newUrlList+'-')
+
         return r
+
+
+    # def getKey(page):
+    #     return page['index']
 
     """[Author:Som ,last modified:16th April 2015]
     def _get_item:used to crawl items.
@@ -227,7 +313,6 @@ class alexaSpider(Spider):
         if isinstance(response, HtmlResponse):
             links = self.link_extractor.extract_links(response)
             r.extend(Request(x.url, callback=self.parse,meta={'counter': counterValue})for x in links if x.url != response.url)
-
         return r
 
     def _extract_img_requests(self,response,tag,counter):
@@ -235,9 +320,13 @@ class alexaSpider(Spider):
         siteList=[]
         if isinstance(response, HtmlResponse):
             tag='I'
+            imgcount=0
             counterValueImg=counter
             sites = Selector(response).xpath("//img/@src").extract()
+            for site in sites:
+                imgcount=imgcount+1
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
                 if isinstance(item, unicode):
                     item=item.encode('utf-8')
@@ -245,7 +334,8 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             wr.writerow(siteList)
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueImg})for site in siteList if site.startswith("http://") or site.startswith("https://"))
+            logwr.writerow([imgcount])
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueImg,'Imgcount':imgcount})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _extract_script_requests(self,response,tag,counter):
@@ -253,9 +343,13 @@ class alexaSpider(Spider):
         siteList=[]
         if isinstance(response, HtmlResponse):
             tag='S'
+            scriptcount=0
             counterValueScript=counter
             sites = Selector(response).xpath("//script/@src").extract()
+            for site in sites:
+                scriptcount=scriptcount+1
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
                 if isinstance(item, unicode):
                     item=item.encode('utf-8')
@@ -263,7 +357,8 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             wr.writerow(siteList)
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueScript})for site in siteList if site.startswith("http://") or site.startswith("https://"))
+            logwr.writerow([scriptcount])
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueScript,'Scriptcount':scriptcount})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _extract_external_link_requests(self,response,tag,counter):
@@ -271,9 +366,13 @@ class alexaSpider(Spider):
         siteList=[]
         if isinstance(response, HtmlResponse):
             tag='L'
+            linkcount=0
             counterValueLink=counter
             sites = Selector(response).xpath("//link/@href").extract()
+            for site in sites:
+                linkcount=linkcount+1
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
                 if isinstance(item, unicode):
                     item=item.encode('utf-8')
@@ -282,7 +381,8 @@ class alexaSpider(Spider):
                     siteList.append(item)
             sites.append(counterValueLink)
             wr.writerow(siteList)
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueLink})for site in siteList if site.startswith("http://") or site.startswith("https://"))
+            logwr.writerow([linkcount])
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueLink,'Linkcount':linkcount})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _extract_embed_requests(self,response,tag,counter):
@@ -290,9 +390,13 @@ class alexaSpider(Spider):
         siteList=[]
         if isinstance(response, HtmlResponse):
             tag='E'
+            embededcount=0
             counterValueEmded=counter
             sites = Selector(response).xpath("//embed/@src").extract()
+            for site in sites:
+                embededcount=embededcount+1
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
                 if isinstance(item, unicode):
                     item=item.encode('utf-8')
@@ -300,7 +404,8 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             wr.writerow(siteList)
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueEmded})for site in siteList if site.startswith("http://") or site.startswith("https://"))
+            logwr.writerow([embededcount])
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueEmded,'Embededcount':embededcount})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _set_title(self, page, response):
@@ -347,8 +452,10 @@ class alexaSpider(Spider):
     """
     def _set_DNS_info(self, page,response):
         CNAME=[]
-        dest_server_ip=[]
-        dest_ASN=[]
+        # dest_server_ip=[]
+        # dest_ASN=[]
+        dest_server_ip[:] = []
+        dest_ASN[:]=[]
         domain=response.url
         #urlparse :This module defines a standard interface to break URL strings up 
         #in components (addressing scheme, network location, path etc.), to combine
@@ -368,6 +475,7 @@ class alexaSpider(Spider):
         try:
             answers = dns.resolver.query(domain, 'CNAME')
             destServerIPs = dns.resolver.query(domain, 'A')
+            #page['destIP']='1'
             for rdata in answers:
                 try:
                     CNAME.append(str(rdata))
@@ -384,13 +492,24 @@ class alexaSpider(Spider):
                 except dns.resolver.NoAnswer:
                     continue
 
-            for rdata in destServerIPs:
+            for IPs in destServerIPs:
                 try:
-                    dest_server_ip.append(str(rdata))
-                    asn_info=IPWhois(str(rdata))
-                    results = asn_info.lookup()
-                    #mydict.keys()[mydict.values().index(16)] 
-                    dest_ASN.append(results['asn'])
+                    if not str(IPs) in dest_server_ip:
+                        dest_server_ip.append(str(IPs))
+                    asn_info=IPWhois(str(IPs))
+
+                    
+                    if isinstance(asn_info, unicode):
+                        asn_info=asn_info.encode('utf-8')
+                    
+                    try:
+                        results = asn_info.lookup()
+                        if not results['asn'] in dest_ASN: 
+                            dest_ASN.append(results['asn'])
+                    except:
+                        dest_ASN.append('-')
+                    #mydict.keys()[mydict.values().index(16)]
+                    
                     #dest_ASN.append(results)
                 except dns.resolver.NXDOMAIN:
                     continue
@@ -401,28 +520,31 @@ class alexaSpider(Spider):
                 except dns.resolver.NoAnswer:
                     continue
 
+            if dest_ASN:
+                page['ASN_Number']=dest_ASN
+            else:
+                page['ASN_Number']='-'
+
             if CNAME:
                 page['CNAMEChain']=CNAME
             else:
                 page['CNAMEChain']="-"
 
             if dest_server_ip:
-                page['dest_server_IP']=dest_server_ip
+                page['destIP']=dest_server_ip
             else:
-                page['dest_server_IP']='-'
-
-            if dest_ASN:
-                page['ASN_Number']=dest_ASN
-            else:
-                page['ASN_Number']='-'
-
+                page['destIP']='-'
         except dns.resolver.NXDOMAIN:
             # CNAME.append('NONE')
             # page['CNAMEChain']=CNAME 
-            page['CNAMEChain']="-"       
+            page['CNAMEChain']="-"   
+            #page['destIP']='-'    
         except dns.resolver.Timeout:
             page['CNAMEChain']="-"
+            #page['destIP']='-'
         except dns.exception.DNSException:
             page['CNAMEChain']="-"
+            #page['destIP']='-'
         except dns.resolver.NoAnswer:
             page['CNAMEChain']="-"
+            #page['destIP']='-'
