@@ -22,14 +22,39 @@ import threading
 import time
 import ipwhois
 from ipwhois import IPWhois
+import gc
 #from multiprocessing import Process, Value,Lock
 from multiprocessing import Process, Lock
 from multiprocessing.sharedctypes import Value
 import threading
 from datetime import datetime
 from operator import itemgetter, attrgetter
-import logging
+#from pybloomfilter import BloomFilter
+from scrapy.utils.job import job_dir
+from scrapy.dupefilter import BaseDupeFilter
+#import logging
 #import scrapy.statscol
+
+# class BLOOMDupeFilter(BaseDupeFilter):
+#     """Request Fingerprint duplicates filter"""
+ 
+#     def __init__(self, path=None):
+#         self.file = None
+#         self.fingerprints = BloomFilter(2000000, 0.00001)
+ 
+#     @classmethod
+#     def from_settings(cls, settings):
+#         return cls(job_dir(settings))
+ 
+#     def request_seen(self, request):
+#         fp = request.url
+#         if fp in self.fingerprints:
+#             return True
+#         self.fingerprints.add(fp)
+ 
+#     def close(self, reason):
+#         self.fingerprints = None
+
 
 class Counter(object):
     def __init__(self, initval=0):
@@ -47,7 +72,6 @@ class Counter(object):
 
 #from scrapy.stats import stats
 class alexaSpider(Spider):
-
     name = 'alexa'
     items=[]
     global resultFile
@@ -66,13 +90,16 @@ class alexaSpider(Spider):
     global distinct_asn
     distinct_asn=[]
     asn_counter=Counter(0)
+    global logwr
     #global destIP
     #destIP=''
     
     #resultFile = codecs.open("output6.csv",mode='wb',encoding='utf-8')
     resultFile = codecs.open("output6.csv",'wbr+')
     testFile = codecs.open("output7.csv",'wbr+')
+    #logging.basicConfig(filename='example.log',level=logging.DEBUG)
     logFile = codecs.open("log.csv",'wbr+')
+    
 
     """[Author:Som ,last modified:16th April 2015]
     def __init__ :this act as constructor for python
@@ -80,7 +107,9 @@ class alexaSpider(Spider):
     stored in kw."""
     def __init__(self, **kw ):
         super(alexaSpider, self).__init__(**kw )
+        #print "spider_name",kw.get(spider)
         url = kw.get('url') or kw.get('domain')
+        print "url###########",url
         counter=kw.get('indexValue')
         if not url.startswith('http://') and not url.startswith('https://'):
             url = 'http://%s' % url
@@ -117,6 +146,7 @@ class alexaSpider(Spider):
         #lock.release()
         return [request]
 
+    #@profile
     def parse(self,response):
         global items
         #global destIP
@@ -127,6 +157,7 @@ class alexaSpider(Spider):
         # item = Page(url=response.url)
         global resultFile
         page = self._get_item(response)
+        logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
         #depth = str(page['depth_level'])
         #depth=dict.get('Age')
         #depth=dict.get('depth_level')
@@ -160,26 +191,50 @@ class alexaSpider(Spider):
         #else:
         #    page['tagType']=tagType
         
-        imgcount=response.meta.get('Imgcount')
-        if imgcount:
-            page['ImgCount']=imgcount        
-        else:
-            page['ImgCount']='-'
-        scriptcount=response.meta.get('Scriptcount')
-        if scriptcount:
-            page['ScriptCount']=scriptcount        
-        else:
-            page['ScriptCount']='-'
-        linkcount=response.meta.get('Linkcount')
-        if linkcount:
-            page['LinkCount']=linkcount        
-        else:
-            page['LinkCount']='-'
-        embededcount=response.meta.get('Embededcount')
-        if embededcount:
-            page['EmbededCount']=embededcount        
-        else:
-            page['EmbededCount']='-'
+        # Objectcount=response.meta.get('count')
+        # logwr.writerow([Objectcount])
+        # if tagType=='I':
+        #     page['ImgCount']=Objectcount
+        # elif tagType=='L':
+        #     page['LinkCount']=Objectcount
+        # elif tagType=='S':
+        #     page['ScriptCount']=Objectcount
+        # elif tagType=='E':
+        #     page['EmbededCount']=Objectcount
+        # else:
+        #     page['ImgCount']='-'
+        #     page['LinkCount']='-'
+        #     page['ScriptCount']='-'
+        #     page['EmbededCount']='-'
+        #logwr.writerow([response.meta])
+        # imgcount=[]
+        # imgcount=response.meta.get('ImageList')
+        # logwr.writerow([imgcount])
+        # if imgcount:
+        #     page['ImgCount']=imgcount        
+        # else:
+        #     page['ImgCount']='-'
+        # scriptcount=[]
+        # scriptcount=response.meta.get('ScriptList')
+        # #logwr.writerow([scriptcount])
+        # if scriptcount:
+        #     page['ScriptCount']=scriptcount        
+        # else:
+        #     page['ScriptCount']='-'
+        # linkcount=[]
+        # linkcount=response.meta.get('LinkList')
+        # #logwr.writerow([linkcount])
+        # if linkcount:
+        #     page['LinkCount']=linkcount        
+        # else:
+        #     page['LinkCount']='-'
+        # embededcount=[]
+        # embededcount=response.meta.get('EmbededList')
+        # #logwr.writerow([embededcount])
+        # if embededcount:
+        #     page['EmbededCount']=embededcount        
+        # else:
+        #     page['EmbededCount']='-'
 
         r = [page]
         #urlList=[page]
@@ -189,7 +244,9 @@ class alexaSpider(Spider):
         # for pageValue in page:
         #     urlList.append(page[pageValue])
         #r.extend(self._extract_requests(response,str(response.meta['counter']))) #external site link
+        gc.collect()
         r.extend(self._extract_requests(response,counter)) #external site link
+        gc.collect()
         r.extend(self._extract_img_requests(response,tagType,counter)) #link to img files
         r.extend(self._extract_script_requests(response,tagType,counter)) #link to script files like java script etc
         r.extend(self._extract_external_link_requests(response,tagType,counter)) #link to css or any other external linked files
@@ -217,10 +274,10 @@ class alexaSpider(Spider):
             urlList.append(asn_no)
         else :
             urlList.append('-')
-        urlList.append(page['ImgCount'])
-        urlList.append(page['ScriptCount'])
-        urlList.append(page['LinkCount'])
-        urlList.append(page['EmbededCount'])
+        # urlList.append(page['ImgCount'])
+        # urlList.append(page['ScriptCount'])
+        # urlList.append(page['LinkCount'])
+        # urlList.append(page['EmbededCount'])
         
         # if page['destIP']:
         #     dest_server_ip_values=';'.join(page['destIP'])
@@ -318,13 +375,15 @@ class alexaSpider(Spider):
     def _extract_img_requests(self,response,tag,counter):
         r = []
         siteList=[]
+        ObjectList=dict()
         if isinstance(response, HtmlResponse):
             tag='I'
-            imgcount=0
+            #imgcount=0
             counterValueImg=counter
             sites = Selector(response).xpath("//img/@src").extract()
-            for site in sites:
-                imgcount=imgcount+1
+            # for site in sites:
+            #     imgcount=imgcount+1
+            #logging.info('imgcount',imgcount)
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
@@ -333,21 +392,31 @@ class alexaSpider(Spider):
                     siteList.append(item)
                 else:
                     siteList.append(item)
-            wr.writerow(siteList)
-            logwr.writerow([imgcount])
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueImg,'Imgcount':imgcount})for site in siteList if site.startswith("http://") or site.startswith("https://"))
+            #wr.writerow(siteList)
+            Imagecount=len(sites)
+            ObjectList['url']=response.url
+            ObjectList['counter']=counterValueImg
+            ObjectList['Imagecount']=Imagecount
+            logwr.writerow([ObjectList])
+            #wr.writerow([Imagecount])
+            #logwr.writerow([imgcount])
+            #Imagecount=str(len(siteList))
+            #logwr.writerow([siteList])
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueImg})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _extract_script_requests(self,response,tag,counter):
         r=[]
         siteList=[]
+        ObjectList=dict()
         if isinstance(response, HtmlResponse):
             tag='S'
-            scriptcount=0
+            #scriptcount=0
             counterValueScript=counter
             sites = Selector(response).xpath("//script/@src").extract()
-            for site in sites:
-                scriptcount=scriptcount+1
+            # for site in sites:
+            #     scriptcount=scriptcount+1
+            #logging.info('scriptcount',scriptcount)
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
@@ -357,20 +426,26 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             wr.writerow(siteList)
-            logwr.writerow([scriptcount])
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueScript,'Scriptcount':scriptcount})for site in siteList if site.startswith("http://") or site.startswith("https://"))
+            scriptcount=len(sites)
+            ObjectList['url']=response.url
+            ObjectList['counter']=counterValueScript
+            ObjectList['scriptcount']=scriptcount
+            logwr.writerow([ObjectList])
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueScript})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _extract_external_link_requests(self,response,tag,counter):
         r=[]
         siteList=[]
+        ObjectList=dict()
         if isinstance(response, HtmlResponse):
             tag='L'
-            linkcount=0
+            #linkcount=0
             counterValueLink=counter
             sites = Selector(response).xpath("//link/@href").extract()
-            for site in sites:
-                linkcount=linkcount+1
+            # for site in sites:
+            #     linkcount=linkcount+1
+            #logging.info('linkcount',linkcount)
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
@@ -380,21 +455,27 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             sites.append(counterValueLink)
-            wr.writerow(siteList)
-            logwr.writerow([linkcount])
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueLink,'Linkcount':linkcount})for site in siteList if site.startswith("http://") or site.startswith("https://"))
+            #wr.writerow(siteList)
+            linkcount=len(sites)
+            ObjectList['url']=response.url
+            ObjectList['counter']=counterValueLink
+            ObjectList['linkcount']=linkcount
+            logwr.writerow([ObjectList])
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueLink})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _extract_embed_requests(self,response,tag,counter):
         r=[]
         siteList=[]
+        ObjectList=dict()
         if isinstance(response, HtmlResponse):
             tag='E'
-            embededcount=0
+            #embededcount=0
             counterValueEmded=counter
             sites = Selector(response).xpath("//embed/@src").extract()
-            for site in sites:
-                embededcount=embededcount+1
+            # for site in sites:
+            #     embededcount=embededcount+1
+            #logging.info('embededcount',embededcount)
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
@@ -404,8 +485,12 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             wr.writerow(siteList)
-            logwr.writerow([embededcount])
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueEmded,'Embededcount':embededcount})for site in siteList if site.startswith("http://") or site.startswith("https://"))
+            embededcount=len(sites)
+            ObjectList['url']=response.url
+            ObjectList['counter']=counterValueEmded
+            ObjectList['embededcount']=embededcount
+            logwr.writerow([ObjectList])
+            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueEmded})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
     def _set_title(self, page, response):

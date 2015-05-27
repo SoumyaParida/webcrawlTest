@@ -8,12 +8,13 @@
 #     http://doc.scrapy.org/en/latest/topics/settings.html
 #
 import alexaCrawl.spiders.middleware
+#from pybloomfilter import BloomFilter
 
 BOT_NAME = 'alexaCrawl'
 
 SPIDER_MODULES = ['alexaCrawl.spiders']
 NEWSPIDER_MODULE = 'alexaCrawl.spiders'
-
+#DUPEFILTER_CLASS = "alexaCrawl.spiders.alexawebcrawltest.BLOOMDupeFilter"
 #CLOSESPIDER_PAGECOUNT = 1000
 #CLOSESPIDER_TIMEOUT = 3600
 
@@ -23,7 +24,11 @@ COOKIES_ENABLED = False
 DEPTH_LIMIT = 1
 WEBSERVICE_ENABLED=False
 TELNETCONSOLE_ENABLED=False
-DOWNLOAD_TIMEOUT=20
+# DOWNLOAD_TIMEOUT=20
+# CONCURRENT_ITEMS = 100
+# CONCURRENT_REQUESTS_PER_DOMAIN = 64
+# #CONCURRENT_SPIDERS = 128
+# DOWNLOAD_DELAY = 0
 # DOWNLOADER_MIDDLEWARES = {
 #     'alexaCrawl.spiders.middleware.ForceUTF8Response': 100,
 # }
