@@ -81,6 +81,7 @@ class alexaSpider(Spider):
     global testFile
     global logFile
     global dest_server_ip
+    global _extract_object_count
     dest_server_ip=[]
     global dest_ASN
     dest_ASN=[]
@@ -109,7 +110,6 @@ class alexaSpider(Spider):
         super(alexaSpider, self).__init__(**kw )
         #print "spider_name",kw.get(spider)
         url = kw.get('url') or kw.get('domain')
-        print "url###########",url
         counter=kw.get('indexValue')
         if not url.startswith('http://') and not url.startswith('https://'):
             url = 'http://%s' % url
@@ -372,6 +372,16 @@ class alexaSpider(Spider):
             r.extend(Request(x.url, callback=self.parse,meta={'counter': counterValue})for x in links if x.url != response.url)
         return r
 
+    def _extract_object_count(siteList):
+        InternalSitesCount=0
+        externalSitesCount=0
+        for site in siteList: 
+            if site.startswith("http://") or site.startswith("https://"):
+                externalSitesCount+=1
+            else:
+                InternalSitesCount+=1
+        return (externalSitesCount,InternalSitesCount)
+
     def _extract_img_requests(self,response,tag,counter):
         r = []
         siteList=[]
@@ -393,10 +403,14 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             #wr.writerow(siteList)
+            
+            externalImageCount,InternalImageCount=_extract_object_count(siteList)
             Imagecount=len(sites)
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueImg
             ObjectList['Imagecount']=Imagecount
+            ObjectList['InternalImageCount']=InternalImageCount
+            ObjectList['ExternalImageCount']=externalImageCount
             logwr.writerow([ObjectList])
             #wr.writerow([Imagecount])
             #logwr.writerow([imgcount])
@@ -426,10 +440,13 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             wr.writerow(siteList)
+            externalscriptCount,InternalscriptCount=_extract_object_count(siteList)
             scriptcount=len(sites)
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueScript
             ObjectList['scriptcount']=scriptcount
+            ObjectList['InternalscriptCount']=InternalscriptCount
+            ObjectList['ExternalscriptCount']=externalscriptCount
             logwr.writerow([ObjectList])
             r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueScript})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
@@ -455,11 +472,14 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             sites.append(counterValueLink)
+            externallinkCount,InternallinkCount=_extract_object_count(siteList)
             #wr.writerow(siteList)
             linkcount=len(sites)
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueLink
             ObjectList['linkcount']=linkcount
+            ObjectList['InternallinkCount']=InternallinkCount
+            ObjectList['ExternallinkCount']=externallinkCount
             logwr.writerow([ObjectList])
             r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueLink})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
@@ -485,10 +505,13 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             wr.writerow(siteList)
+            externalembededCount,InternalembededCount=_extract_object_count(siteList)
             embededcount=len(sites)
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueEmded
             ObjectList['embededcount']=embededcount
+            ObjectList['InternalembededCount']=InternalembededCount
+            ObjectList['ExternalembededCount']=externalembededCount
             logwr.writerow([ObjectList])
             r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueEmded})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
