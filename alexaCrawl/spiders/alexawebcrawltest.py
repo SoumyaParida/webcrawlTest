@@ -623,7 +623,8 @@ class alexaSpider(Spider):
                     if asNum:
                         asNumSplit=asNum.split(' ')
                         asn=''.join(x for x in asNumSplit[0] if x.isdigit())
-                        dest_ASN.append(asn)
+                        if not asn in dest_ASN:
+                            dest_ASN.append(asn)
                     else:
                         dest_ASN.append('-')
 

@@ -392,6 +392,7 @@ def multiProc_crawler(domainlist,nprocs):
                 internalscriptList=internallinkList=internalImageList=internalembededList=[]
 
                 field = row.strip().split('\t')
+                
                 loginput=open("log.csv",'r')
                 reader=csv.reader(loginput,delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
                 
