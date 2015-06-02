@@ -299,7 +299,7 @@ def multiProc_crawler(domainlist,nprocs):
     logger = mp.get_logger()
     logger.setLevel(logging.INFO)
 
-    for i in range(nprocs):
+    for i in range(len(listOfLists)):
         p = mp.Process(target=worker,
                 args=(domainlist[i],out_q)) 
         procs.append(p)
@@ -349,7 +349,12 @@ def multiProc_crawler(domainlist,nprocs):
         for row in csv_f:
             if row[0] == idx:
                 if '-' not in row[9]:
-                    unique_asn.add(row[9])
+                    if ';' in row[9]:
+                        rowASN=row[9].split(";")
+                        for asn in rowASN:
+                            unique_asn.add(asn)
+                    else:
+                        unique_asn.add(row[9])
         print "ASN number change for index %s is : %s %s" % (str(idx), str(len(unique_asn)),unique_asn)
         d[str(idx)]=str(len(unique_asn))
 
@@ -406,14 +411,14 @@ def multiProc_crawler(domainlist,nprocs):
                                 urlValue=key.strip().split("'url':")
                             if "counter" in key:
                                 counter=key.strip().split("'counter':")
-                            if "Imagecount" in key:
-                                ImageValue=(key.strip().split("'Imagecount':"))                                
-                            if "scriptcount" in key:
-                                scriptcountnumber=(key.strip().split("'scriptcount':"))                    
-                            if "linkcount" in key:
-                                LinkCount=(key.strip().split("'linkcount':"))  
-                            if "embededcount" in key:
-                                embededcount=(key.strip().split("'embededcount':"))                              
+                            # if "Imagecount" in key:
+                            #     ImageValue=(key.strip().split("'Imagecount':"))                                
+                            # if "scriptcount" in key:
+                            #     scriptcountnumber=(key.strip().split("'scriptcount':"))                    
+                            # if "linkcount" in key:
+                            #     LinkCount=(key.strip().split("'linkcount':"))  
+                            # if "embededcount" in key:
+                            #     embededcount=(key.strip().split("'embededcount':"))                              
                             
                             if "ExternalImageCount" in key:
                                 externalImageList=(key.strip().split("'ExternalImageCount':"))
@@ -432,66 +437,70 @@ def multiProc_crawler(domainlist,nprocs):
                             if "InternalembededCount" in key:
                                 internalembededList=(key.strip().split("'InternalembededCount':"))
                         
-                            if len(ImageValue)>0:
-                                Imagecount=int(ImageValue[1].strip())
-                            else:
-                                Imagecount=0
-                            if len(scriptcountnumber):
-                                scriptcount=int(scriptcountnumber[1].strip())
-                            else:
-                                scriptcount=0
-                            if len(LinkCount):
-                                Linkcount=int(LinkCount[1].strip())
-                            else:
-                                Linkcount=0
-                            if len(embededcount):
-                                EmbededCount=int(embededcount[1].strip())
-                            else:
-                                EmbededCount=0
+                            # if len(ImageValue)>0:
+                            #     Imagecount=int(ImageValue[1].strip())
+                            # else:
+                            #     Imagecount=0
+                            # if len(scriptcountnumber)>0:
+                            #     scriptcount=int(scriptcountnumber[1].strip())
+                            # else:
+                            #     scriptcount=0
+                            # if len(LinkCount)>0:
+                            #     Linkcount=int(LinkCount[1].strip())
+                            # else:
+                            #     Linkcount=0
+                            # if len(embededcount)>0:
+                            #     EmbededCount=int(embededcount[1].strip())
+                            # else:
+                            #     EmbededCount=0
                             
                             if len(externalImageList)>0:
                                 extImagecount=int(externalImageList[1].strip())
                             else:
                                 extImagecount=0
-                            if len(internalImageList):
+                            if len(internalImageList)>0:
                                 intImagecount=int(internalImageList[1].strip())
                             else:
                                 intImageCount=0
 
-                            if len(externalscriptList):
+                            if len(externalscriptList)>0:
                                 extScriptCount=int(externalscriptList[1].strip())
                             else:
                                 extScriptCount=0
-                            if len(internalscriptList):
+                            if len(internalscriptList)>0:
                                 intScriptCount=int(internalscriptList[1].strip())
                             else:
                                 intScriptCount=0
 
-                            if len(externallinkList):
+                            if len(externallinkList)>0:
                                 extLinkCount=int(externallinkList[1].strip())
                             else:
                                 extLinkCount=0
-                            if len(internallinkList):
+                            if len(internallinkList)>0:
                                 intLinkCount=int(internallinkList[1].strip())
                             else:
                                 intLinkCount=0
 
-                            if len(externalembededList):
+                            if len(externalembededList)>0:
                                 extEmbededCount=int(externalembededList[1].strip())
                             else:
                                 extEmbededCount=0
-                            if len(internalembededList):
+                            if len(internalembededList)>0:
                                 intEmbededCount=int(internalembededList[1].strip())
                             else:
                                 intEmbededCount=0
 
                         url=urlValue[1].replace("'","").strip()
                         
+                        print "field[0]=",field[0]
+                        print "counter=",counter[1].strip()
+                        print "field[4]=",field[4]
+                        print "url=",url
                         if (field[0] is counter[1].strip() and field[4] == url):
-                            images=Imagecount
-                            scripts=scriptcount
-                            links=Linkcount
-                            embededs=EmbededCount
+                            # images=Imagecount
+                            # scripts=scriptcount
+                            # links=Linkcount
+                            # embededs=EmbededCount
 
                             intImages=intImagecount
                             intScripts=intScriptCount
@@ -503,7 +512,7 @@ def multiProc_crawler(domainlist,nprocs):
                             extLinks=extLinkCount
                             extEmbededs=extEmbededCount
                             
-                TotalObjectCount=images+scripts+links+embededs
+                # TotalObjectCount=images+scripts+links+embededs
                 TotalInternalObjects=intImages+intScripts+intLinks+intEmbeded
                 TotalExternalObjects=extImages+extScripts+extLinks+extEmbededs
                 d[TotalInternalObjects]=TotalInternalObjects
