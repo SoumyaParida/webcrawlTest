@@ -32,6 +32,8 @@ from twisted.internet import reactor
 from scrapy.crawler import Crawler
 from scrapy import log, signals
 from scrapy.utils.project import get_project_settings
+#from guppy import hpy
+
 
 class ReactorControl:
     def __init__(self):
@@ -41,6 +43,10 @@ class ReactorControl:
         self.crawlers_running += 1
 
     def remove_crawler(self):
+        #h = hp.heap()
+        # print "##########################################"
+        # print "size",h
+        # print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
         self.crawlers_running -= 1
 
         if self.crawlers_running == 0 :
@@ -48,14 +54,15 @@ class ReactorControl:
 
 reactor_control = ReactorControl()
 
+#hp = hpy()
+
 rowValues=[]
 finalItemList=[]
 listOfLists=[]
 
 row_no=1
 code_chunk=1
-listOfLists=[[] for _ in range(50)]
-
+listOfLists=[[] for _ in range(10)]
 with open('top-1m.csv') as csvfile:
     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|') 
     #print "soumya"
@@ -67,11 +74,11 @@ with open('top-1m.csv') as csvfile:
             #finalItemList.append(rowValues[1])
             
             listOfLists[row_no-1].append(rowValues[1])             
-            if (row_no==50):
-                row_no=row_no%50
+            if (row_no==10):
+                row_no=row_no%10
                 #row_no=row_no-1
             row_no=row_no+1
-            code_chunk=(row_no%10000)
+            code_chunk=(row_no%1000)
             # if row_no==20:
             #     code_chunk=20
             # else:    
@@ -306,6 +313,8 @@ def multiProc_crawler(domainlist,nprocs):
             print "jobs",job
         job.join()
 
+
+
     # while len(procs) > 0:
     #     try:
     #         # Join all threads using a timeout so it doesn't block
@@ -341,7 +350,7 @@ def multiProc_crawler(domainlist,nprocs):
             if row[0] == idx:
                 if '-' not in row[9]:
                     unique_asn.add(row[9])
-        print "ASN number change for index %s is : %s" % (str(idx), str(len(unique_asn)))
+        print "ASN number change for index %s is : %s %s" % (str(idx), str(len(unique_asn)),unique_asn)
         d[str(idx)]=str(len(unique_asn))
 
     field=[]
@@ -365,44 +374,142 @@ def multiProc_crawler(domainlist,nprocs):
     # loginput.close()
     
     # print "loglist-",logList
-    with open("log.csv",'r') as loginput:
-        with open("finalOutput.csv", 'r') as outputCSV:
-            with open("finalOutput1.csv", 'wbr+') as finaloutput:
+    #with open("log.csv",'r') as loginput:
+    with open("finalOutput.csv", 'r') as outputCSV:
+        with open("final.csv", 'wbr+') as finaloutput:
+            readerCSV = csv.reader(outputCSV,delimiter='\t',quotechar=' ')
+            writerOutput = csv.writer(finaloutput,delimiter='\t',quotechar=' ',quoting=csv.QUOTE_MINIMAL)
+            
+            for row in outputCSV:   
+                TotalObjectCount=TotalInternalObjects=TotalExternalObjects=0
+                urlValue=counter=ImageValue=scriptcountnumber=LinkCount=embededcount=[]
+                images=scripts=links=embededs=0
+
+                intImages=intScripts=intLinks=intEmbeded=0
+                extImages=extScripts=extLinks=extEmbededs=0
+
+                externalImageList=externalembededList=externalscriptList=externallinkList=[]
+                internalscriptList=internallinkList=internalImageList=internalembededList=[]
+
+                field = row.strip().split('\t')
+                loginput=open("log.csv",'r')
                 reader=csv.reader(loginput,delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-                readerCSV = csv.reader(outputCSV,delimiter='\t',quotechar=' ')
-                writerOutput = csv.reader(finaloutput,delimiter='\t',quotechar=' ')
-                for outputRow in outputCSV:
-                    print "soumyaaaaaaaaaaa++++++++++++++++++++++++++"
-                    for rowinput in reader:
-                        print "soumyaaaaaaaaaaa"
-                        field=str(rowinput).strip().split(',')
-                        print "field=",field
-                        print "outrow[0]=",outputRow[0]
-                        print "inrow[0]=",rowinput["counter"]
-                        print "outrow[4]=",outputRow[4]
-                        print "inrow[4]=",rowinput["url"]
-                        if outputRow[0]== rowinput["counter"] and outputRow[4]==rowinput["url"]:
-                            Imagecount=rowinput["Imagecount"]
-                            ScriptCount=rowinput["ScriptCount"]
-                            LinkCount=rowinput["LinkCount"]
-                            EmbededCount=rowinput["EmbededCount"]
-                            if Imagecount:
-                                field.insert(11,Imagecount)
+                
+                for rowinput in reader:
+                    for value in rowinput:
+                        value=value.replace('{','')
+                        value=value.replace('}','')
+                        element=value.strip().split(',')
+                        for key in element:
+                            if "url" in key:
+                                urlValue=key.strip().split("'url':")
+                            if "counter" in key:
+                                counter=key.strip().split("'counter':")
+                            if "Imagecount" in key:
+                                ImageValue=(key.strip().split("'Imagecount':"))                                
+                            if "scriptcount" in key:
+                                scriptcountnumber=(key.strip().split("'scriptcount':"))                    
+                            if "linkcount" in key:
+                                LinkCount=(key.strip().split("'linkcount':"))  
+                            if "embededcount" in key:
+                                embededcount=(key.strip().split("'embededcount':"))                              
+                            
+                            if "ExternalImageCount" in key:
+                                externalImageList=(key.strip().split("'ExternalImageCount':"))
+                            if "InternalImageCount" in key:
+                                internalImageList=(key.strip().split("'InternalImageCount':"))
+                            if "ExternalscriptCount" in key:
+                                externalscriptList=(key.strip().split("'ExternalscriptCount':"))
+                            if "InternalscriptCount" in key:
+                                internalscriptList=(key.strip().split("'InternalscriptCount':"))
+                            if "ExternallinkCount" in key:
+                                externallinkList=(key.strip().split("'ExternallinkCount':"))
+                            if "InternallinkCount" in key:
+                                internallinkList=(key.strip().split("'InternallinkCount':"))
+                            if "ExternalembededCount" in key:
+                                externalembededList=(key.strip().split("'ExternalembededCount':"))
+                            if "InternalembededCount" in key:
+                                internalembededList=(key.strip().split("'InternalembededCount':"))
+                        
+                            if len(ImageValue)>0:
+                                Imagecount=int(ImageValue[1].strip())
                             else:
-                                field.insert(11,'-')
-                            if ScriptCount:
-                                field.insert(12,ScriptCount)
+                                Imagecount=0
+                            if len(scriptcountnumber):
+                                scriptcount=int(scriptcountnumber[1].strip())
                             else:
-                                field.insert(12,'-')
-                            if LinkCount:
-                                field.insert(13,LinkCount)
+                                scriptcount=0
+                            if len(LinkCount):
+                                Linkcount=int(LinkCount[1].strip())
                             else:
-                                field.insert(13,'-')
-                            if EmbededCount:
-                                field.insert(14,EmbededCount)
+                                Linkcount=0
+                            if len(embededcount):
+                                EmbededCount=int(embededcount[1].strip())
                             else:
-                                field.insert(14,'-')
-                        writerOutput.writerow(field)
+                                EmbededCount=0
+                            
+                            if len(externalImageList)>0:
+                                extImagecount=int(externalImageList[1].strip())
+                            else:
+                                extImagecount=0
+                            if len(internalImageList):
+                                intImagecount=int(internalImageList[1].strip())
+                            else:
+                                intImageCount=0
+
+                            if len(externalscriptList):
+                                extScriptCount=int(externalscriptList[1].strip())
+                            else:
+                                extScriptCount=0
+                            if len(internalscriptList):
+                                intScriptCount=int(internalscriptList[1].strip())
+                            else:
+                                intScriptCount=0
+
+                            if len(externallinkList):
+                                extLinkCount=int(externallinkList[1].strip())
+                            else:
+                                extLinkCount=0
+                            if len(internallinkList):
+                                intLinkCount=int(internallinkList[1].strip())
+                            else:
+                                intLinkCount=0
+
+                            if len(externalembededList):
+                                extEmbededCount=int(externalembededList[1].strip())
+                            else:
+                                extEmbededCount=0
+                            if len(internalembededList):
+                                intEmbededCount=int(internalembededList[1].strip())
+                            else:
+                                intEmbededCount=0
+
+                        url=urlValue[1].replace("'","").strip()
+                        
+                        if (field[0] is counter[1].strip() and field[4] == url):
+                            images=Imagecount
+                            scripts=scriptcount
+                            links=Linkcount
+                            embededs=EmbededCount
+
+                            intImages=intImagecount
+                            intScripts=intScriptCount
+                            intLinks=intLinkCount
+                            intEmbeded=intEmbededCount
+
+                            extImages=extImagecount
+                            extScripts=extScriptCount
+                            extLinks=extLinkCount
+                            extEmbededs=extEmbededCount
+                            
+                TotalObjectCount=images+scripts+links+embededs
+                TotalInternalObjects=intImages+intScripts+intLinks+intEmbeded
+                TotalExternalObjects=extImages+extScripts+extLinks+extEmbededs
+                d[TotalInternalObjects]=TotalInternalObjects
+                d[TotalExternalObjects]=TotalExternalObjects
+                field.insert(11,d[TotalInternalObjects])
+                field.insert(12,d[TotalExternalObjects])
+                writerOutput.writerow(field)
         f.close()
 
 #print "ASN number change for index %s is : %s" % (str(idx), str(len(unique_asn)))
@@ -410,11 +517,9 @@ def multiProc_crawler(domainlist,nprocs):
 # [Som] :These lines can be used later for multiprocessing
 resultlist=[]
 print "listOfLists",listOfLists
-multiProc_crawler(listOfLists,50)
+multiProc_crawler(listOfLists,2)
+
 #print "resultlist=",resultlist
-
-
-
 
 
 #cd ../../

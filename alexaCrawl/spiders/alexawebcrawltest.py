@@ -32,6 +32,9 @@ from operator import itemgetter, attrgetter
 #from pybloomfilter import BloomFilter
 from scrapy.utils.job import job_dir
 from scrapy.dupefilter import BaseDupeFilter
+import pygeoip
+from guppy import hpy
+#import geoiplookup
 #import logging
 #import scrapy.statscol
 
@@ -88,13 +91,17 @@ class alexaSpider(Spider):
     counter=Counter(0)
     depth_counter=0
     tagType='A'
-    global distinct_asn
-    distinct_asn=[]
-    asn_counter=Counter(0)
+    # global distinct_asn
+    # distinct_asn=[]
+    # asn_counter=Counter(0)
     global logwr
     #global destIP
     #destIP=''
-    
+    # hp = hpy()
+    # h = hp.heap()
+    # print "##########################################"
+    # print "size",h
+    # print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
     #resultFile = codecs.open("output6.csv",mode='wb',encoding='utf-8')
     resultFile = codecs.open("output6.csv",'wbr+')
     testFile = codecs.open("output7.csv",'wbr+')
@@ -244,9 +251,9 @@ class alexaSpider(Spider):
         # for pageValue in page:
         #     urlList.append(page[pageValue])
         #r.extend(self._extract_requests(response,str(response.meta['counter']))) #external site link
-        gc.collect()
+        #gc.collect()
         r.extend(self._extract_requests(response,counter)) #external site link
-        gc.collect()
+        #gc.collect()
         r.extend(self._extract_img_requests(response,tagType,counter)) #link to img files
         r.extend(self._extract_script_requests(response,tagType,counter)) #link to script files like java script etc
         r.extend(self._extract_external_link_requests(response,tagType,counter)) #link to css or any other external linked files
@@ -405,7 +412,7 @@ class alexaSpider(Spider):
             #wr.writerow(siteList)
             
             externalImageCount,InternalImageCount=_extract_object_count(siteList)
-            Imagecount=len(sites)
+            Imagecount=len(siteList)
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueImg
             ObjectList['Imagecount']=Imagecount
@@ -441,7 +448,7 @@ class alexaSpider(Spider):
                     siteList.append(item)
             wr.writerow(siteList)
             externalscriptCount,InternalscriptCount=_extract_object_count(siteList)
-            scriptcount=len(sites)
+            scriptcount=len(siteList)
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueScript
             ObjectList['scriptcount']=scriptcount
@@ -474,7 +481,7 @@ class alexaSpider(Spider):
             sites.append(counterValueLink)
             externallinkCount,InternallinkCount=_extract_object_count(siteList)
             #wr.writerow(siteList)
-            linkcount=len(sites)
+            linkcount=len(siteList)
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueLink
             ObjectList['linkcount']=linkcount
@@ -506,7 +513,7 @@ class alexaSpider(Spider):
                     siteList.append(item)
             wr.writerow(siteList)
             externalembededCount,InternalembededCount=_extract_object_count(siteList)
-            embededcount=len(sites)
+            embededcount=len(siteList)
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueEmded
             ObjectList['embededcount']=embededcount
@@ -559,7 +566,7 @@ class alexaSpider(Spider):
         def _set_DNS_info:used to retrieve CNAME chain.
     """
     def _set_DNS_info(self, page,response):
-        CNAME=[]
+        CNAMEList=[]
         # dest_server_ip=[]
         # dest_ASN=[]
         dest_server_ip[:] = []
@@ -586,11 +593,11 @@ class alexaSpider(Spider):
             #page['destIP']='1'
             for rdata in answers:
                 try:
-                    CNAME.append(str(rdata))
+                    CNAMEList.append(str(rdata))
                     while (rdata.target):
                         value=dns.resolver.query(rdata.target, 'CNAME')
                         for rdata in value:
-                            CNAME.append(str(rdata))
+                            CNAMEList.append(str(rdata))
                 except dns.resolver.NXDOMAIN:
                     continue
                 except dns.resolver.Timeout:
@@ -600,22 +607,36 @@ class alexaSpider(Spider):
                 except dns.resolver.NoAnswer:
                     continue
 
-            for IPs in destServerIPs:
+            for ip_address in destServerIPs:
                 try:
-                    if not str(IPs) in dest_server_ip:
-                        dest_server_ip.append(str(IPs))
-                    asn_info=IPWhois(str(IPs))
+                    if not str(ip_address) in dest_server_ip:
+                         dest_server_ip.append(str(ip_address))
+                    #asn_info=IPWhois(str(IPs))
+                    gir = pygeoip.GeoIP('/usr/share/GeoIP/GeoIPASNum.dat',
+                       flags=pygeoip.const.GEOIP_STANDARD)
+                    #gi.asn_by_name(IPs)
+                    # if str(ip_address):
+                    #     dest_ASN.append(str(ip_address))
+                    # else:
+                    #     dest_ASN.append('-')
+                    asNum=gir.asn_by_name(str(ip_address))
+                    if asNum:
+                        asNumSplit=asNum.split(' ')
+                        asn=''.join(x for x in asNumSplit[0] if x.isdigit())
+                        dest_ASN.append(asn)
+                    else:
+                        dest_ASN.append('-')
 
                     
-                    if isinstance(asn_info, unicode):
-                        asn_info=asn_info.encode('utf-8')
+                    # if isinstance(asn_info, unicode):
+                    #     asn_info=asn_info.encode('utf-8')
                     
-                    try:
-                        results = asn_info.lookup()
-                        if not results['asn'] in dest_ASN: 
-                            dest_ASN.append(results['asn'])
-                    except:
-                        dest_ASN.append('-')
+                    # try:
+                    #     results = asn_info.lookup()
+                    #     if not results['asn'] in dest_ASN: 
+                    #         dest_ASN.append(results['asn'])
+                    # except:
+                    #     dest_ASN.append('-')
                     #mydict.keys()[mydict.values().index(16)]
                     
                     #dest_ASN.append(results)
@@ -633,8 +654,8 @@ class alexaSpider(Spider):
             else:
                 page['ASN_Number']='-'
 
-            if CNAME:
-                page['CNAMEChain']=CNAME
+            if CNAMEList:
+                page['CNAMEChain']=CNAMEList
             else:
                 page['CNAMEChain']="-"
 
