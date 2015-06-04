@@ -31,9 +31,14 @@ from datetime import datetime
 from operator import itemgetter, attrgetter
 #from pybloomfilter import BloomFilter
 from scrapy.utils.job import job_dir
-from scrapy.dupefilter import BaseDupeFilter
+#from scrapy.dupefilter import BaseDupeFilter
 import pygeoip
-from guppy import hpy
+#from lockfile import LockFile
+#import filelock
+import fcntl
+
+
+#from guppy import hpy
 #import geoiplookup
 #import logging
 #import scrapy.statscol
@@ -87,6 +92,7 @@ class alexaSpider(Spider):
     global _extract_object_count
     dest_server_ip=[]
     global dest_ASN
+    global lock
     dest_ASN=[]
     counter=Counter(0)
     depth_counter=0
@@ -95,6 +101,7 @@ class alexaSpider(Spider):
     # distinct_asn=[]
     # asn_counter=Counter(0)
     global logwr
+    #global wr
     #global destIP
     #destIP=''
     # hp = hpy()
@@ -103,11 +110,17 @@ class alexaSpider(Spider):
     # print "size",h
     # print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
     #resultFile = codecs.open("output6.csv",mode='wb',encoding='utf-8')
-    resultFile = codecs.open("output6.csv",'wbr+')
+    
     testFile = codecs.open("output7.csv",'wbr+')
     #logging.basicConfig(filename='example.log',level=logging.DEBUG)
     logFile = codecs.open("log.csv",'wbr+')
-    
+    #lock = LockFile(/logFile)
+    logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+
+    #lock = filelock.FileLock("output6.csv")
+    lock = Lock()
+    resultFile = codecs.open("output6.csv",'wbr+')
+    #wr = csv.writer(resultFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
 
     """[Author:Som ,last modified:16th April 2015]
     def __init__ :this act as constructor for python
@@ -173,7 +186,7 @@ class alexaSpider(Spider):
         #     depth='1'
         # else:
         #     depth='0'
-
+        lock.acquire()
         depth = page['depth_level']
         depth_value=depth.get('depth')
         if depth_value:
@@ -259,6 +272,7 @@ class alexaSpider(Spider):
         r.extend(self._extract_external_link_requests(response,tagType,counter)) #link to css or any other external linked files
         r.extend(self._extract_embed_requests(response,tagType,counter)) #link to addresses of the external file to embed
         
+        
         #index=str(page['index'])
         urlList.append(page['index'])
         #urlList=page['index']
@@ -321,8 +335,15 @@ class alexaSpider(Spider):
         # for item in newUrlList:
         #     if item[]
         #newUrlList=sorted(newUrlList, key=attrgetter(page['index']))
-
+        # lock.acquire()
+        # try:
+        #     wr.writerow(newUrlList)
+        # finally:
+        #     lock.release()
+        # fcntl.flock(resultFile, fcntl.LOCK_EX)
         wr.writerow(newUrlList)
+        # fcntl.flock(resultFile, fcntl.LOCK_UN)
+        lock.release()
         # csv_f = csv.reader(resultFile)
         # index_set = set()
         # for row in csv_f:
@@ -402,7 +423,7 @@ class alexaSpider(Spider):
             #     imgcount=imgcount+1
             #logging.info('imgcount',imgcount)
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-            logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            #logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
                 if isinstance(item, unicode):
                     item=item.encode('utf-8')
@@ -413,12 +434,14 @@ class alexaSpider(Spider):
             
             externalImageCount,InternalImageCount=_extract_object_count(siteList)
             Imagecount=len(siteList)
+            #lock.acquire()
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueImg
             ObjectList['Imagecount']=Imagecount
             ObjectList['InternalImageCount']=InternalImageCount
             ObjectList['ExternalImageCount']=externalImageCount
             logwr.writerow([ObjectList])
+            #lock.release()
             #wr.writerow([Imagecount])
             #logwr.writerow([imgcount])
             #Imagecount=str(len(siteList))
@@ -439,7 +462,7 @@ class alexaSpider(Spider):
             #     scriptcount=scriptcount+1
             #logging.info('scriptcount',scriptcount)
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-            logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            #logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
                 if isinstance(item, unicode):
                     item=item.encode('utf-8')
@@ -449,12 +472,14 @@ class alexaSpider(Spider):
             wr.writerow(siteList)
             externalscriptCount,InternalscriptCount=_extract_object_count(siteList)
             scriptcount=len(siteList)
+            #lock.acquire()
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueScript
             ObjectList['scriptcount']=scriptcount
             ObjectList['InternalscriptCount']=InternalscriptCount
             ObjectList['ExternalscriptCount']=externalscriptCount
             logwr.writerow([ObjectList])
+            #lock.release()
             r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueScript})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
@@ -471,7 +496,7 @@ class alexaSpider(Spider):
             #     linkcount=linkcount+1
             #logging.info('linkcount',linkcount)
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-            logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            #logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
                 if isinstance(item, unicode):
                     item=item.encode('utf-8')
@@ -482,12 +507,16 @@ class alexaSpider(Spider):
             externallinkCount,InternallinkCount=_extract_object_count(siteList)
             #wr.writerow(siteList)
             linkcount=len(siteList)
+            #lock.acquire()
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueLink
             ObjectList['linkcount']=linkcount
             ObjectList['InternallinkCount']=InternallinkCount
             ObjectList['ExternallinkCount']=externallinkCount
+            #lock.acquire()
             logwr.writerow([ObjectList])
+            #lock.acquire()
+            #lock.release()
             r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueLink})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
@@ -504,7 +533,7 @@ class alexaSpider(Spider):
             #     embededcount=embededcount+1
             #logging.info('embededcount',embededcount)
             wr = csv.writer(testFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-            logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+            #logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
             for item in sites:
                 if isinstance(item, unicode):
                     item=item.encode('utf-8')
@@ -514,12 +543,16 @@ class alexaSpider(Spider):
             wr.writerow(siteList)
             externalembededCount,InternalembededCount=_extract_object_count(siteList)
             embededcount=len(siteList)
+            #lock.acquire()
             ObjectList['url']=response.url
             ObjectList['counter']=counterValueEmded
             ObjectList['embededcount']=embededcount
             ObjectList['InternalembededCount']=InternalembededCount
             ObjectList['ExternalembededCount']=externalembededCount
+            #lock.acquire()
             logwr.writerow([ObjectList])
+            #lock.acquire()
+            #lock.release()
             r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueEmded})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
 
