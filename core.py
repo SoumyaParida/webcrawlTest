@@ -155,109 +155,141 @@ def multiProc_crawler(domainlist,nprocs):
     logList = []
     with open("finalOutput.csv", 'r') as outputCSV:
         with open("final.csv", 'wbr+') as finaloutput:
+            # loginput=open("log.csv",'r')
             readerCSV = csv.reader(outputCSV,delimiter='\t',quotechar=' ')
             writerOutput = csv.writer(finaloutput,delimiter='\t',quotechar=' ',quoting=csv.QUOTE_MINIMAL)
-            
-            for row in outputCSV:   
-                TotalObjectCount=TotalInternalObjects=TotalExternalObjects=0
-                urlValue=counter=ImageValue=scriptcountnumber=LinkCount=embededcount=[]
-                images=scripts=links=embededs=0
+            csvfile=open('log.csv')
+            fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount']
+            reader = csv.DictReader(csvfile,fieldnames=fieldnames)
 
-                intImages=intScripts=intLinks=intEmbeded=0
-                extImages=extScripts=extLinks=extEmbededs=0
-
-                externalImageList=externalembededList=externalscriptList=externallinkList=[]
-                internalscriptList=internallinkList=internalImageList=internalembededList=[]
-
+            TotalExObj=TotalIntObj=0
+            for row in outputCSV:
                 field = row.strip().split('\t')
-                
-                loginput=open("log.csv",'r')
-                reader=csv.reader(loginput,delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-                
-                for rowinput in reader:
-                    for value in rowinput:
-                        value=value.replace('{','')
-                        value=value.replace('}','')
-                        element=value.strip().split(',')
-                        for key in element:
-                            if "url" in key:
-                                urlValue=key.strip().split("'url':")
-                            if "counter" in key:
-                                counter=key.strip().split("'counter':")                            
-                            
-                            if "ExternalImageCount" in key:
-                                externalImageList=(key.strip().split("'ExternalImageCount':"))
-                            if "InternalImageCount" in key:
-                                internalImageList=(key.strip().split("'InternalImageCount':"))                        
-                            if "ExternalscriptCount" in key:
-                                externalscriptList=(key.strip().split("'ExternalscriptCount':"))                        
-                            if "InternalscriptCount" in key:
-                                internalscriptList=(key.strip().split("'InternalscriptCount':"))
-                            if "ExternallinkCount" in key:
-                                externallinkList=(key.strip().split("'ExternallinkCount':"))
-                            if "InternallinkCount" in key:
-                                internallinkList=(key.strip().split("'InternallinkCount':"))
-                            if "ExternalembededCount" in key:
-                                externalembededList=(key.strip().split("'ExternalembededCount':"))
-                            if "InternalembededCount" in key:
-                                internalembededList=(key.strip().split("'InternalembededCount':"))
-                            if len(externalImageList)>0:
-                                extImagecount=int(externalImageList[1].strip())
-                            else:
-                                extImagecount=0
-                            if len(internalImageList)>0:
-                                intImagecount=int(internalImageList[1].strip())
-                            else:
-                                intImageCount=0
-
-                            if len(externalscriptList)>0:
-                                extScriptCount=int(externalscriptList[1].strip())
-                            else:
-                                extScriptCount=0
-                            if len(internalscriptList)>0:
-                                intScriptCount=int(internalscriptList[1].strip())
-                            else:
-                                intScriptCount=0
-
-                            if len(externallinkList)>0:
-                                extLinkCount=int(externallinkList[1].strip())
-                            else:
-                                extLinkCount=0
-                            if len(internallinkList)>0:
-                                intLinkCount=int(internallinkList[1].strip())
-                            else:
-                                intLinkCount=0
-
-                            if len(externalembededList)>0:
-                                extEmbededCount=int(externalembededList[1].strip())
-                            else:
-                                extEmbededCount=0
-                            if len(internalembededList)>0:
-                                intEmbededCount=int(internalembededList[1].strip())
-                            else:
-                                intEmbededCount=0
-
-                        url=urlValue[1].replace("'","").strip()
-                        
-                        if (field[0] is counter[1].strip() and field[4] == url):
-                            intImages=intImagecount
-                            intScripts=intScriptCount
-                            intLinks=intLinkCount
-                            intEmbeded=intEmbededCount
-
-                            extImages=extImagecount
-                            extScripts=extScriptCount
-                            extLinks=extLinkCount
-                            extEmbededs=extEmbededCount
-
-                TotalInternalObjects=intImages+intScripts+intLinks+intEmbeded
-                TotalExternalObjects=extImages+extScripts+extLinks+extEmbededs
-                d[TotalInternalObjects]=TotalInternalObjects
-                d[TotalExternalObjects]=TotalExternalObjects
-                field.insert(11,d[TotalInternalObjects])
-                field.insert(12,d[TotalExternalObjects])
+                #print "field",field
+                csvfile.seek(0)
+                for rowValue in reader:     
+                    if rowValue['counter'] == field[0] and rowValue['url']==field[4]:
+                        extImages=rowValue['ExternalImageCount']
+                        intImages=rowValue['InternalImageCount']
+                        extScripts=rowValue['ExternalscriptCount']
+                        intScripts=rowValue['InternalscriptCount']
+                        extLinks=rowValue['ExternallinkCount']
+                        intLinks=rowValue['InternallinkCount']
+                        extEmbededs=rowValue['ExternalembededCount']
+                        intEmbeded=rowValue['InternalembededCount']
+                        #print "rowValue",rowValue
+                        TotalExternalObjects= extImages+extScripts+extLinks+extEmbededs
+                        TotalExObj=TotalExObj+int(TotalExternalObjects)
+                        TotalInternalObjects=intImages+intScripts+intLinks+intEmbeded
+                        TotalIntObj=TotalIntObj+int(TotalInternalObjects)
+                field.insert(1,TotalExObj)
+                field.insert(2,TotalIntObj)
                 writerOutput.writerow(field)
-            f.close()
+    # with open("finalOutput.csv", 'r') as outputCSV:
+    #     with open("final.csv", 'wbr+') as finaloutput:
+    #         readerCSV = csv.reader(outputCSV,delimiter='\t',quotechar=' ')
+    #         writerOutput = csv.writer(finaloutput,delimiter='\t',quotechar=' ',quoting=csv.QUOTE_MINIMAL)
+            
+    #         for row in outputCSV:   
+    #             TotalObjectCount=TotalInternalObjects=TotalExternalObjects=0
+    #             urlValue=counter=ImageValue=scriptcountnumber=LinkCount=embededcount=[]
+    #             images=scripts=links=embededs=0
+
+    #             intImages=intScripts=intLinks=intEmbeded=0
+    #             extImages=extScripts=extLinks=extEmbededs=0
+
+    #             externalImageList=externalembededList=externalscriptList=externallinkList=[]
+    #             internalscriptList=internallinkList=internalImageList=internalembededList=[]
+
+    #             field = row.strip().split('\t')
+                
+    #             loginput=open("log.csv",'r')
+    #             reader=csv.reader(loginput,delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+                
+    #             for rowinput in reader:
+    #                 for value in rowinput:
+    #                     value=value.replace('{','')
+    #                     value=value.replace('}','')
+    #                     element=value.strip().split(',')
+    #                     for key in element:
+    #                         if "url" in key:
+    #                             urlValue=key.strip().split("'url':")
+    #                         if "counter" in key:
+    #                             counter=key.strip().split("'counter':")                            
+                            
+    #                         if "ExternalImageCount" in key:
+    #                             externalImageList=(key.strip().split("'ExternalImageCount':"))
+    #                         if "InternalImageCount" in key:
+    #                             internalImageList=(key.strip().split("'InternalImageCount':"))                        
+    #                         if "ExternalscriptCount" in key:
+    #                             externalscriptList=(key.strip().split("'ExternalscriptCount':"))                        
+    #                         if "InternalscriptCount" in key:
+    #                             internalscriptList=(key.strip().split("'InternalscriptCount':"))
+    #                         if "ExternallinkCount" in key:
+    #                             externallinkList=(key.strip().split("'ExternallinkCount':"))
+    #                         if "InternallinkCount" in key:
+    #                             internallinkList=(key.strip().split("'InternallinkCount':"))
+    #                         if "ExternalembededCount" in key:
+    #                             externalembededList=(key.strip().split("'ExternalembededCount':"))
+    #                         if "InternalembededCount" in key:
+    #                             internalembededList=(key.strip().split("'InternalembededCount':"))
+    #                         if len(externalImageList)>0:
+    #                             extImagecount=int(externalImageList[1].strip())
+    #                         else:
+    #                             extImagecount=0
+    #                         if len(internalImageList)>0:
+    #                             intImagecount=int(internalImageList[1].strip())
+    #                         else:
+    #                             intImageCount=0
+
+    #                         if len(externalscriptList)>0:
+    #                             extScriptCount=int(externalscriptList[1].strip())
+    #                         else:
+    #                             extScriptCount=0
+    #                         if len(internalscriptList)>0:
+    #                             intScriptCount=int(internalscriptList[1].strip())
+    #                         else:
+    #                             intScriptCount=0
+
+    #                         if len(externallinkList)>0:
+    #                             extLinkCount=int(externallinkList[1].strip())
+    #                         else:
+    #                             extLinkCount=0
+    #                         if len(internallinkList)>0:
+    #                             intLinkCount=int(internallinkList[1].strip())
+    #                         else:
+    #                             intLinkCount=0
+
+    #                         if len(externalembededList)>0:
+    #                             extEmbededCount=int(externalembededList[1].strip())
+    #                         else:
+    #                             extEmbededCount=0
+    #                         if len(internalembededList)>0:
+    #                             intEmbededCount=int(internalembededList[1].strip())
+    #                         else:
+    #                             intEmbededCount=0
+
+    #                     url=urlValue[1].replace("'","").strip()
+                        
+    #                     if (field[0] is counter[1].strip() and field[4] == url):
+    #                         intImages=intImagecount
+    #                         intScripts=intScriptCount
+    #                         intLinks=intLinkCount
+    #                         intEmbeded=intEmbededCount
+
+    #                         extImages=extImagecount
+    #                         extScripts=extScriptCount
+    #                         extLinks=extLinkCount
+    #                         extEmbededs=extEmbededCount
+
+    #             TotalInternalObjects=intImages+intScripts+intLinks+intEmbeded
+    #             TotalExternalObjects=extImages+extScripts+extLinks+extEmbededs
+    #             d[TotalInternalObjects]=TotalInternalObjects
+    #             d[TotalExternalObjects]=TotalExternalObjects
+    #             field.insert(11,d[TotalInternalObjects])
+    #             field.insert(12,d[TotalExternalObjects])
+    #             writerOutput.writerow(field)
+    #         f.close()
 
 #[Som] :These lines can be used later for multiprocessing
 resultlist=[]

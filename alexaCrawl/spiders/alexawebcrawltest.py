@@ -90,6 +90,7 @@ class alexaSpider(Spider):
     global logFile
     global dest_server_ip
     global _extract_object_count
+    global getsecondleveldomain
     dest_server_ip=[]
     global dest_ASN
     global lock
@@ -114,8 +115,13 @@ class alexaSpider(Spider):
     testFile = codecs.open("output7.csv",'wbr+')
     #logging.basicConfig(filename='example.log',level=logging.DEBUG)
     logFile = codecs.open("log.csv",'wbr+')
+    fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount','UniqueExternalSites','ExternalSites']
+    logwr = csv.DictWriter(logFile, fieldnames=fieldnames)
+    #logwriter = csv.DictWriter(logFile, fieldnames=fieldnames)
     #lock = LockFile(/logFile)
-    logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+    #writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    #logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+    
 
     #lock = filelock.FileLock("output6.csv")
     lock = Lock()
@@ -177,7 +183,7 @@ class alexaSpider(Spider):
         # item = Page(url=response.url)
         global resultFile
         page = self._get_item(response)
-        logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+        #logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
         #depth = str(page['depth_level'])
         #depth=dict.get('Age')
         #depth=dict.get('depth_level')
@@ -403,17 +409,23 @@ class alexaSpider(Spider):
     def _extract_object_count(siteList):
         InternalSitesCount=0
         externalSitesCount=0
+        uniqueExternalSites=[]
+        externalSites=[]
         for site in siteList: 
             if site.startswith("http://") or site.startswith("https://"):
                 externalSitesCount+=1
+                uniqueExternalSites.append(getsecondleveldomain(site))
+                externalSites.append(site)
             else:
                 InternalSitesCount+=1
-        return (externalSitesCount,InternalSitesCount)
+        return (externalSitesCount,InternalSitesCount,uniqueExternalSites,externalSites)
 
     def _extract_img_requests(self,response,tag,counter):
         r = []
         siteList=[]
         ObjectList=dict()
+        externalSites=[]
+        uniqueExternalSites=[]
         if isinstance(response, HtmlResponse):
             tag='I'
             #imgcount=0
@@ -432,15 +444,19 @@ class alexaSpider(Spider):
                     siteList.append(item)
             #wr.writerow(siteList)
             
-            externalImageCount,InternalImageCount=_extract_object_count(siteList)
+            externalImageCount,InternalImageCount,uniqueExternalSites,externalSites =_extract_object_count(siteList)
             Imagecount=len(siteList)
             #lock.acquire()
-            ObjectList['url']=response.url
-            ObjectList['counter']=counterValueImg
-            ObjectList['Imagecount']=Imagecount
-            ObjectList['InternalImageCount']=InternalImageCount
-            ObjectList['ExternalImageCount']=externalImageCount
-            logwr.writerow([ObjectList])
+            
+            # ObjectList['url']=response.url
+            # ObjectList['counter']=counterValueImg
+            # ObjectList['Imagecount']=Imagecount
+            # ObjectList['InternalImageCount']=InternalImageCount
+            # ObjectList['ExternalImageCount']=externalImageCount
+
+            # logwr.writeheader()
+            logwr.writerow({'url': response.url, 'counter': counterValueImg,'InternalImageCount':InternalImageCount,'ExternalImageCount':externalImageCount,'UniqueExternalSites':uniqueExternalSites,'ExternalSites':externalSites})
+            #logwr.writerow([ObjectList])
             #lock.release()
             #wr.writerow([Imagecount])
             #logwr.writerow([imgcount])
@@ -453,6 +469,8 @@ class alexaSpider(Spider):
         r=[]
         siteList=[]
         ObjectList=dict()
+        externalSites=[]
+        uniqueExternalSites=[]
         if isinstance(response, HtmlResponse):
             tag='S'
             #scriptcount=0
@@ -470,15 +488,18 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             wr.writerow(siteList)
-            externalscriptCount,InternalscriptCount=_extract_object_count(siteList)
+            externalscriptCount,InternalscriptCount,uniqueExternalSites,externalSites=_extract_object_count(siteList)
             scriptcount=len(siteList)
             #lock.acquire()
-            ObjectList['url']=response.url
-            ObjectList['counter']=counterValueScript
-            ObjectList['scriptcount']=scriptcount
-            ObjectList['InternalscriptCount']=InternalscriptCount
-            ObjectList['ExternalscriptCount']=externalscriptCount
-            logwr.writerow([ObjectList])
+            # ObjectList['url']=response.url
+            # ObjectList['counter']=counterValueScript
+            # ObjectList['scriptcount']=scriptcount
+            # ObjectList['InternalscriptCount']=InternalscriptCount
+            # ObjectList['ExternalscriptCount']=externalscriptCount
+            # logwr.writerow([ObjectList])
+
+            # logwr.writeheader()
+            logwr.writerow({'url': response.url, 'counter': counterValueScript,'InternalscriptCount':InternalscriptCount,'ExternalscriptCount':externalscriptCount,'UniqueExternalSites':uniqueExternalSites,'ExternalSites':externalSites})
             #lock.release()
             r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueScript})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
@@ -487,6 +508,8 @@ class alexaSpider(Spider):
         r=[]
         siteList=[]
         ObjectList=dict()
+        externalSites=[]
+        uniqueExternalSites=[]
         if isinstance(response, HtmlResponse):
             tag='L'
             #linkcount=0
@@ -504,17 +527,18 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             sites.append(counterValueLink)
-            externallinkCount,InternallinkCount=_extract_object_count(siteList)
+            externallinkCount,InternallinkCount,uniqueExternalSites,externalSites=_extract_object_count(siteList)
             #wr.writerow(siteList)
             linkcount=len(siteList)
             #lock.acquire()
-            ObjectList['url']=response.url
-            ObjectList['counter']=counterValueLink
-            ObjectList['linkcount']=linkcount
-            ObjectList['InternallinkCount']=InternallinkCount
-            ObjectList['ExternallinkCount']=externallinkCount
-            #lock.acquire()
-            logwr.writerow([ObjectList])
+            # ObjectList['url']=response.url
+            # ObjectList['counter']=counterValueLink
+            # ObjectList['linkcount']=linkcount
+            # ObjectList['InternallinkCount']=InternallinkCount
+            # ObjectList['ExternallinkCount']=externallinkCount
+            # #lock.acquire()
+            # logwr.writerow([ObjectList])
+            logwr.writerow({'url': response.url, 'counter': counterValueLink,'InternallinkCount':InternallinkCount,'ExternallinkCount':externallinkCount,'UniqueExternalSites':uniqueExternalSites,'ExternalSites':externalSites})
             #lock.acquire()
             #lock.release()
             r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueLink})for site in siteList if site.startswith("http://") or site.startswith("https://"))
@@ -524,6 +548,8 @@ class alexaSpider(Spider):
         r=[]
         siteList=[]
         ObjectList=dict()
+        externalSites=[]
+        uniqueExternalSites=[]
         if isinstance(response, HtmlResponse):
             tag='E'
             #embededcount=0
@@ -541,16 +567,17 @@ class alexaSpider(Spider):
                 else:
                     siteList.append(item)
             wr.writerow(siteList)
-            externalembededCount,InternalembededCount=_extract_object_count(siteList)
+            externalembededCount,InternalembededCount,uniqueExternalSites,externalSites=_extract_object_count(siteList)
             embededcount=len(siteList)
             #lock.acquire()
-            ObjectList['url']=response.url
-            ObjectList['counter']=counterValueEmded
-            ObjectList['embededcount']=embededcount
-            ObjectList['InternalembededCount']=InternalembededCount
-            ObjectList['ExternalembededCount']=externalembededCount
-            #lock.acquire()
-            logwr.writerow([ObjectList])
+            # ObjectList['url']=response.url
+            # ObjectList['counter']=counterValueEmded
+            # ObjectList['embededcount']=embededcount
+            # ObjectList['InternalembededCount']=InternalembededCount
+            # ObjectList['ExternalembededCount']=externalembededCount
+            # #lock.acquire()
+            # logwr.writerow([ObjectList])
+            logwr.writerow({'url': response.url, 'counter': counterValueEmded,'InternalembededCount':InternalembededCount,'ExternalembededCount':externalembededCount,'UniqueExternalSites':uniqueExternalSites,'ExternalSites':externalSites})
             #lock.acquire()
             #lock.release()
             r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueEmded})for site in siteList if site.startswith("http://") or site.startswith("https://"))
@@ -736,5 +763,3 @@ class alexaSpider(Spider):
             if (candidate in tlds or wildcard_candidate in tlds):
                 return ".".join(url_elements[i-1:])
                 # returns "abcde.co.uk"
-
-        raise ValueError("Domain not in global list of TLDs")
