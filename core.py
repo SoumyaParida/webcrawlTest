@@ -159,10 +159,12 @@ def multiProc_crawler(domainlist,nprocs):
             readerCSV = csv.reader(outputCSV,delimiter='\t',quotechar=' ')
             writerOutput = csv.writer(finaloutput,delimiter='\t',quotechar=' ',quoting=csv.QUOTE_MINIMAL)
             csvfile=open('log.csv')
-            fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount']
+            fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount',,'UniqueExternalSites','ExternalSites']
             reader = csv.DictReader(csvfile,fieldnames=fieldnames)
 
             TotalExObj=TotalIntObj=0
+            TotalUniqueExternalSites=0
+            uniqueExternalSites=0
             for row in outputCSV:
                 field = row.strip().split('\t')
                 #print "field",field
@@ -177,6 +179,7 @@ def multiProc_crawler(domainlist,nprocs):
                         intLinks=rowValue['InternallinkCount']
                         extEmbededs=rowValue['ExternalembededCount']
                         intEmbeded=rowValue['InternalembededCount']
+                        uniqueExternalSites=rowValue['UniqueExternalSites']
                         #print "rowValue",rowValue
                         TotalExternalObjects= extImages+extScripts+extLinks+extEmbededs
                         TotalExObj=TotalExObj+int(TotalExternalObjects)
@@ -184,6 +187,7 @@ def multiProc_crawler(domainlist,nprocs):
                         TotalIntObj=TotalIntObj+int(TotalInternalObjects)
                 field.insert(1,TotalExObj)
                 field.insert(2,TotalIntObj)
+                field.insert(13,TotalUniqueExternalSites)
                 writerOutput.writerow(field)
     # with open("finalOutput.csv", 'r') as outputCSV:
     #     with open("final.csv", 'wbr+') as finaloutput:

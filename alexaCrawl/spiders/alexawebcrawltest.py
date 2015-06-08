@@ -409,23 +409,23 @@ class alexaSpider(Spider):
     def _extract_object_count(siteList):
         InternalSitesCount=0
         externalSitesCount=0
-        uniqueExternalSites=[]
+        uniqueExternalSites=set()
         externalSites=[]
         for site in siteList: 
             if site.startswith("http://") or site.startswith("https://"):
                 externalSitesCount+=1
-                uniqueExternalSites.append(getsecondleveldomain(site))
+                uniqueExternalSites.add(getsecondleveldomain(site))
                 externalSites.append(site)
             else:
                 InternalSitesCount+=1
-        return (externalSitesCount,InternalSitesCount,uniqueExternalSites,externalSites)
+        return (externalSitesCount,InternalSitesCount,len(uniqueExternalSites),externalSites)
 
     def _extract_img_requests(self,response,tag,counter):
         r = []
         siteList=[]
         ObjectList=dict()
         externalSites=[]
-        uniqueExternalSites=[]
+        #uniqueExternalSites=[]
         if isinstance(response, HtmlResponse):
             tag='I'
             #imgcount=0
@@ -470,7 +470,7 @@ class alexaSpider(Spider):
         siteList=[]
         ObjectList=dict()
         externalSites=[]
-        uniqueExternalSites=[]
+        #uniqueExternalSites=[]
         if isinstance(response, HtmlResponse):
             tag='S'
             #scriptcount=0
@@ -509,7 +509,7 @@ class alexaSpider(Spider):
         siteList=[]
         ObjectList=dict()
         externalSites=[]
-        uniqueExternalSites=[]
+        #uniqueExternalSites=[]
         if isinstance(response, HtmlResponse):
             tag='L'
             #linkcount=0
@@ -549,7 +549,7 @@ class alexaSpider(Spider):
         siteList=[]
         ObjectList=dict()
         externalSites=[]
-        uniqueExternalSites=[]
+        #uniqueExternalSites=set()
         if isinstance(response, HtmlResponse):
             tag='E'
             #embededcount=0
