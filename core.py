@@ -153,21 +153,27 @@ def multiProc_crawler(domainlist,nprocs):
     csvinput.close()
     csvoutput.close()
     logList = []
+    externalImageList=externalembededList=externalscriptList=externallinkList=[]
+    internalscriptList=internallinkList=internalImageList=internalembededList=[]
+    TotalObjectCount=TotalInternalObjects=TotalExternalObjects=0
+    urlValue=counter=ImageValue=scriptcountnumber=LinkCount=embededcount=[]
+    images=scripts=links=embededs=0
+    intImages=intScripts=intLinks=intEmbeded=0
+    extImages=extScripts=extLinks=extEmbededs=0
     with open("finalOutput.csv", 'r') as outputCSV:
         with open("final.csv", 'wbr+') as finaloutput:
             # loginput=open("log.csv",'r')
             readerCSV = csv.reader(outputCSV,delimiter='\t',quotechar=' ')
             writerOutput = csv.writer(finaloutput,delimiter='\t',quotechar=' ',quoting=csv.QUOTE_MINIMAL)
             csvfile=open('log.csv')
-            fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount',,'UniqueExternalSites','ExternalSites']
-            reader = csv.DictReader(csvfile,fieldnames=fieldnames)
-
-            TotalExObj=TotalIntObj=0
+            fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount','UniqueExternalSites','ExternalSites']
+            reader = csv.DictReader(csvfile,fieldnames=fieldnames)           
             TotalUniqueExternalSites=0
             uniqueExternalSites=0
             for row in outputCSV:
                 field = row.strip().split('\t')
                 #print "field",field
+                TotalExObj=TotalIntObj=0
                 csvfile.seek(0)
                 for rowValue in reader:     
                     if rowValue['counter'] == field[0] and rowValue['url']==field[4]:
@@ -179,15 +185,18 @@ def multiProc_crawler(domainlist,nprocs):
                         intLinks=rowValue['InternallinkCount']
                         extEmbededs=rowValue['ExternalembededCount']
                         intEmbeded=rowValue['InternalembededCount']
-                        uniqueExternalSites=rowValue['UniqueExternalSites']
+                        #uniqueExternalSites=rowValue['UniqueExternalSites']
                         #print "rowValue",rowValue
-                        TotalExternalObjects= extImages+extScripts+extLinks+extEmbededs
-                        TotalExObj=TotalExObj+int(TotalExternalObjects)
-                        TotalInternalObjects=intImages+intScripts+intLinks+intEmbeded
-                        TotalIntObj=TotalIntObj+int(TotalInternalObjects)
-                field.insert(1,TotalExObj)
-                field.insert(2,TotalIntObj)
-                field.insert(13,TotalUniqueExternalSites)
+                    TotalExternalObjects= extImages+extScripts+extLinks+extEmbededs
+                    TotalExObj=TotalExObj+int(TotalExternalObjects)
+                    TotalInternalObjects=intImages+intScripts+intLinks+intEmbeded
+                    TotalIntObj=TotalIntObj+int(TotalInternalObjects)
+                # print "row",row
+                # print "TotalIntObj",TotalIntObj
+                # print "TotalExObj",TotalExObj
+                field.insert(11,TotalExObj)
+                field.insert(12,TotalIntObj)
+                #field.insert(13,TotalUniqueExternalSites)
                 writerOutput.writerow(field)
     # with open("finalOutput.csv", 'r') as outputCSV:
     #     with open("final.csv", 'wbr+') as finaloutput:

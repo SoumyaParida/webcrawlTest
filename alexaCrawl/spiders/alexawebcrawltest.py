@@ -418,7 +418,7 @@ class alexaSpider(Spider):
                 externalSites.append(site)
             else:
                 InternalSitesCount+=1
-        return (externalSitesCount,InternalSitesCount,len(uniqueExternalSites),externalSites)
+        return (externalSitesCount,InternalSitesCount,uniqueExternalSites,externalSites)
 
     def _extract_img_requests(self,response,tag,counter):
         r = []
