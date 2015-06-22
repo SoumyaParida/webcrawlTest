@@ -283,18 +283,24 @@ def multiProc_crawler(domainlist,nprocs):
 
     for row in outputCSV:
         TotalInternalObjects=TotalExternalObjects=0
+        count=0
         field = row.strip().split('\t')
         keyValuepaircheck=field[0]+field[4]
         if keyValuepaircheck in keyValuePairLineNew:
             value=keyValuePairLineNew[keyValuepaircheck]
-            #print "value",value
             TotalExternalObjects= int(value['ExternalImageCount'])+int(value['ExternalscriptCount'])+int(value['ExternallinkCount'])+int(value['ExternalembededCount'])
             TotalInternalObjects=int(value['InternalImageCount'])+int(value['InternalscriptCount'])+int(value['InternallinkCount'])+int(value['InternalembededCount'])
         else:
             TotalExternalObjects=0
             TotalInternalObjects=0
+
+        if keyValuepaircheck in keyValuePairLine:
+            value=keyValuePairLine[keyValuepaircheck]
+            for item in value:
+                count=count+int(item['UniqueExternalSites'])
         field.insert(11,TotalExternalObjects)
         field.insert(12,TotalInternalObjects)
+        field.insert(13,count)
         writerOutput.writerow(field)
     # logList = []
     # csvdict=dict()
