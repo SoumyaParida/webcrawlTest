@@ -13,20 +13,22 @@ from urlparse import urlparse
 #from scrapy.stats import stats
 import multiprocessing as mp
 #from multiprocessing import Process, Value,Lock
-from multiprocessing import Process, Lock
-from multiprocessing.sharedctypes import Value
+#from multiprocessing import Process, Lock
+#from multiprocessing.sharedctypes import Value
+from multiprocessing import Process, Value, Lock
 #import time
 import random
 import Queue
-import socket
-import dns.resolver
-import dns.name
-import dns.message
-import dns.query
-import dns.flags
-import subprocess
-import shlex
-from datetime import datetime, date, time
+# import socket
+# import dns.resolver
+# import dns.name
+# import dns.message
+# import dns.query
+# import dns.flags
+# import subprocess
+# import shlex
+from datetime import datetime, date,time
+import time
 import logging
 from twisted.internet import reactor
 from scrapy.crawler import Crawler
@@ -34,6 +36,18 @@ from scrapy import log, signals
 from scrapy.utils.project import get_project_settings
 #from guppy import hpy
 
+class Counter(object):
+    def __init__(self, initval=0):
+        self.val = Value('i', initval)
+        self.lock = Lock()
+
+    def increment(self):
+        with self.lock:
+            self.val.value += 1
+
+    def value(self):
+        with self.lock:
+            return self.val.value
 
 class ReactorControl:
     def __init__(self):
@@ -43,39 +57,80 @@ class ReactorControl:
         self.crawlers_running += 1
 
     def remove_crawler(self):
-        #h = hp.heap()
-        # print "##########################################"
-        # print "size",h
-        # print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
         self.crawlers_running -= 1
-
         if self.crawlers_running == 0 :
             reactor.stop()
 
 reactor_control = ReactorControl()
+counter = Counter(0)
+lock=Lock()
 
 #hp = hpy()
 
 rowValues=[]
 finalItemList=[]
 listOfLists=[]
+urlIndexlist=dict()
 
 row_no=1
 code_chunk=1
-listOfLists=[[] for _ in range(10)]
+listrange=1
+
+listOfLists=[[] for _ in range(listrange)]
 with open('top-1m.csv') as csvfile:
     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|') 
     for row in spamreader:
         rowValue=', '.join(row)
         rowValues=rowValue.split(",")
+        urlIndexlist[rowValues[1]]=rowValues[0]
         if (code_chunk==row_no):
             listOfLists[row_no-1].append(rowValues[1])             
-            if (row_no==10):
-                row_no=row_no%10
+            if (row_no==listrange):
+                row_no=row_no%listrange
             row_no=row_no+1
-            code_chunk=(row_no%1000)
+            code_chunk=(row_no%10000)
         else:
             break
+
+# def worker(work_queue, done_queue):
+#     try:
+#         for url in iter(work_queue.get, 'STOP'):
+#             spider = alexaSpider(domain=url,spider_queue=done_queue,counter=counter.value())
+#             #lock.release()
+#             settings = get_project_settings()
+#             crawler = Crawler(settings)
+#             #crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
+#             crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
+#             crawler.configure()
+#             crawler.crawl(spider)
+#             reactor_control.add_crawler()
+#             crawler.start()
+#             settings = get_project_settings()
+#             crawler = Crawler(settings)
+#             reactor.run()
+#             #done_queue.put("%s - %s got %s." % (current_process().name, url, status_code))
+#     except Exception, e:
+#         done_queue.put(e.message)
+#     return True
+#     # outdict = {}
+    # # for url in urllist:
+    # #     lock.acquire()
+    # #     counter.increment()
+    # spider = alexaSpider(domain=url,spider_queue=out_q,counter=counter.value())
+    # lock.release()
+    # settings = get_project_settings()
+    # crawler = Crawler(settings)
+    # #crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
+    # crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
+    # crawler.configure()
+    # crawler.crawl(spider)
+    # reactor_control.add_crawler()
+    # crawler.start()
+        # out_q.put(spider)
+        # i=i+1
+
+    
+#     return
 """[Author  : Soumya ranjan Parida]
 Function : setup_crawler
 This function can be used to create multiple spiders
@@ -83,7 +138,8 @@ inside single process"""
 def worker(urllist,out_q):
     outdict = {}
     for url in urllist:
-        spider = alexaSpider(domain=url)
+        spider = alexaSpider(domain=url,counter=urlIndexlist.get(url))
+        #print "spider",spider
         settings = get_project_settings()
         crawler = Crawler(settings)
         #crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
@@ -92,18 +148,54 @@ def worker(urllist,out_q):
         crawler.crawl(spider)
         reactor_control.add_crawler()
         crawler.start()
+        #
         # out_q.put(spider)
         # i=i+1
-
     settings = get_project_settings()
     crawler = Crawler(settings)
     reactor.run()
     return
 
+# def multiProc_crawler(domainlist,nprocs):
+#     out_q = Queue.Queue()
+#     procs = []
+#     workers = 10
+#     work_queue = Queue.Queue()
+#     done_queue = Queue.Queue()
+#     processes = []
+
+#     for url in domainlist:
+#         work_queue.put(url)
+#     for i in xrange(workers):
+#         p = mp.Process(target=worker,
+#                 args=(work_queue, done_queue)) 
+#         procs.append(p)
+#         p.start()
+#         work_queue.put('STOP')
+
+#     for job in procs:
+#         if job.is_alive():
+#             print 'Terminating process'
+#             print "jobs",job
+#         job.join()
+
+#     print "done_queue",done_queue.get
+
+def merge_dicts(*dict_args):
+    '''
+    Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+    '''
+    result = {}
+    for dictionary in dict_args:
+        result.update(dictionary)
+    return result
+
+#@profile
 def multiProc_crawler(domainlist,nprocs):
     out_q = Queue.Queue()
     procs = []
-    for i in range(len(listOfLists)):
+    for i in xrange(nprocs):
         p = mp.Process(target=worker,
                 args=(domainlist[i],out_q)) 
         procs.append(p)
@@ -115,6 +207,12 @@ def multiProc_crawler(domainlist,nprocs):
             print "jobs",job
         job.join()
 
+
+
+    # response = out_q.get()
+    # print "response",response
+    #results_queue.put(result)
+#     results_queue.put(result)
     csvinput = open("output6.csv",'r')
     csv_f=csv.reader(csvinput, delimiter='\t',quotechar=' ')
     csvoutput=open("finalOutput.csv", 'w')
@@ -132,6 +230,7 @@ def multiProc_crawler(domainlist,nprocs):
         unique_asn = set()
         for row in csv_f:
             if row[0] == idx:
+                #print "row",row[4]
                 if '-' not in row[9]:
                     try:
                         if ';' in row[9]:
@@ -142,7 +241,7 @@ def multiProc_crawler(domainlist,nprocs):
                             unique_asn.add(row[9])
                     except:
                         print "row=row"
-        print "ASN number change for index %s is : %s %s" % (str(idx), str(len(unique_asn)),unique_asn)    
+        #print "ASN number change for index %s is : %s %s" % (str(idx), str(len(unique_asn)),unique_asn)    
         
         with open("output6.csv",'r') as inputfile:
             for row in inputfile:
@@ -152,52 +251,165 @@ def multiProc_crawler(domainlist,nprocs):
                     writer.writerow(field)
     csvinput.close()
     csvoutput.close()
-    logList = []
-    externalImageList=externalembededList=externalscriptList=externallinkList=[]
-    internalscriptList=internallinkList=internalImageList=internalembededList=[]
-    TotalObjectCount=TotalInternalObjects=TotalExternalObjects=0
-    urlValue=counter=ImageValue=scriptcountnumber=LinkCount=embededcount=[]
-    images=scripts=links=embededs=0
-    intImages=intScripts=intLinks=intEmbeded=0
-    extImages=extScripts=extLinks=extEmbededs=0
-    with open("finalOutput.csv", 'r') as outputCSV:
-        with open("final.csv", 'wbr+') as finaloutput:
-            # loginput=open("log.csv",'r')
-            readerCSV = csv.reader(outputCSV,delimiter='\t',quotechar=' ')
-            writerOutput = csv.writer(finaloutput,delimiter='\t',quotechar=' ',quoting=csv.QUOTE_MINIMAL)
-            csvfile=open('log.csv')
-            fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount','UniqueExternalSites','ExternalSites']
-            reader = csv.DictReader(csvfile,fieldnames=fieldnames)           
-            TotalUniqueExternalSites=0
-            uniqueExternalSites=0
-            for row in outputCSV:
-                field = row.strip().split('\t')
-                #print "field",field
-                TotalExObj=TotalIntObj=0
-                csvfile.seek(0)
-                for rowValue in reader:     
-                    if rowValue['counter'] == field[0] and rowValue['url']==field[4]:
-                        extImages=rowValue['ExternalImageCount']
-                        intImages=rowValue['InternalImageCount']
-                        extScripts=rowValue['ExternalscriptCount']
-                        intScripts=rowValue['InternalscriptCount']
-                        extLinks=rowValue['ExternallinkCount']
-                        intLinks=rowValue['InternallinkCount']
-                        extEmbededs=rowValue['ExternalembededCount']
-                        intEmbeded=rowValue['InternalembededCount']
-                        #uniqueExternalSites=rowValue['UniqueExternalSites']
-                        #print "rowValue",rowValue
-                    TotalExternalObjects= extImages+extScripts+extLinks+extEmbededs
-                    TotalExObj=TotalExObj+int(TotalExternalObjects)
-                    TotalInternalObjects=intImages+intScripts+intLinks+intEmbeded
-                    TotalIntObj=TotalIntObj+int(TotalInternalObjects)
-                # print "row",row
-                # print "TotalIntObj",TotalIntObj
-                # print "TotalExObj",TotalExObj
-                field.insert(11,TotalExObj)
-                field.insert(12,TotalIntObj)
-                #field.insert(13,TotalUniqueExternalSites)
-                writerOutput.writerow(field)
+
+
+
+    csvfile=open('log.csv')
+    fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount','UniqueExternalSites','ExternalSites']
+    reader = csv.DictReader(csvfile,fieldnames=fieldnames)
+
+    outputCSV=open("finalOutput.csv", 'r')
+    readerCSV = csv.reader(outputCSV,delimiter='\t',quotechar=' ')
+
+    finaloutput=open("final.csv", 'wbr+')
+    writerOutput = csv.writer(finaloutput,delimiter='\t',quotechar=' ',quoting=csv.QUOTE_MINIMAL)
+    keyValuePairLine = { }
+    keyValuePairLineNew= { }
+    for row in reader:
+        key=str(row['counter']+row['url'])
+        keyValuePairLine.setdefault(key, []).append(row)
+    #print keyValuePairLine
+
+    for key,value in keyValuePairLine.items():
+        for Valuedict in value:
+            empty_keys = [k for k,v in Valuedict.iteritems() if not v or v=='[]']
+            for k in empty_keys:
+                del Valuedict[k]
+
+    for key,value in keyValuePairLine.items():
+        value1=merge_dicts(value[0],value[1],value[2],value[3]) 
+        keyValuePairLineNew[key]=value1
+
+
+    for row in outputCSV:
+        TotalInternalObjects=TotalExternalObjects=0
+        field = row.strip().split('\t')
+        keyValuepaircheck=field[0]+field[4]
+        if keyValuepaircheck in keyValuePairLineNew:
+            value=keyValuePairLineNew[keyValuepaircheck]
+            #print "value",value
+            TotalExternalObjects= int(value['ExternalImageCount'])+int(value['ExternalscriptCount'])+int(value['ExternallinkCount'])+int(value['ExternalembededCount'])
+            TotalInternalObjects=int(value['InternalImageCount'])+int(value['InternalscriptCount'])+int(value['InternallinkCount'])+int(value['InternalembededCount'])
+        else:
+            TotalExternalObjects=0
+            TotalInternalObjects=0
+        field.insert(11,TotalExternalObjects)
+        field.insert(12,TotalInternalObjects)
+        writerOutput.writerow(field)
+    # logList = []
+    # csvdict=dict()
+    # csvfile=open('log.csv')
+    # fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount','UniqueExternalSites','ExternalSites']
+    # reader = csv.DictReader(csvfile,fieldnames=fieldnames)
+    # #reader.get
+    # for rowValue in reader:
+    #     csvdict[rowValue['counter']]=(rowValue['url'],rowValue['counter'])
+    #     print "dict",csvdict
+    # externalImageList=externalembededList=externalscriptList=externallinkList=[]
+    # internalscriptList=internallinkList=internalImageList=internalembededList=[]
+   
+
+
+
+
+    # intImages=intScripts=intLinks=intEmbeded=0
+    # extImages=extScripts=extLinks=extEmbededs=0
+    # TotalInternalObjects=TotalExternalObjects=0
+
+    # csvfile=open('log.csv')
+    # fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount','UniqueExternalSites','ExternalSites']
+    # reader = csv.DictReader(csvfile,fieldnames=fieldnames)
+
+    # outputCSV=open("finalOutput.csv", 'r')
+    # readerCSV = csv.reader(outputCSV,delimiter='\t',quotechar=' ')
+
+    # finaloutput=open("final.csv", 'wbr+')
+    # writerOutput = csv.writer(finaloutput,delimiter='\t',quotechar=' ',quoting=csv.QUOTE_MINIMAL)
+
+    # csvdict=dict()
+    # compareDict={}
+    # for rowValue in reader:
+    #     csvdict[rowValue['url']] = rowValue
+
+    # for k, v in compareDict.iteritems():
+    #     print compareDict[v]
+    #     compareDict.setdefault(k, []).append(v)
+    # print compareDict         
+
+    # for row in outputCSV:
+    #     field = row.strip().split('\t')
+    #     TotalExObj=TotalIntObj=TotalUniSites=0
+    #     for field[4] in csvdict:
+    #         print csvdict[field[4]]
+    #     print "row",row
+        #     extImages=csvdict[rowValue['ExternalImageCount']]
+        #     intImages=csvdict[rowValue['InternalImageCount']
+        #     extScripts=csvdict[rowValue['ExternalscriptCount']
+        #     intScripts=csvdict[rowValue['InternalscriptCount']
+        #     extLinks=rowValue['ExternallinkCount']
+        #     intLinks=rowValue['InternallinkCount']
+        #     extEmbededs=rowValue['ExternalembededCount']
+        #     intEmbeded=rowValue['InternalembededCount']
+        #     TotalExternalObjects= extImages+extScripts+extLinks+extEmbededs
+        #     TotalExObj=TotalExObj+int(TotalExternalObjects)
+        #     TotalInternalObjects=intImages+intScripts+intLinks+intEmbeded
+        #     TotalIntObj=TotalIntObj+int(TotalInternalObjects)
+        # field.insert(11,TotalExObj)
+        # field.insert(12,TotalIntObj)
+        # writerOutput.writerow(field)
+
+
+
+    # externalImageList=externalembededList=externalscriptList=externallinkList=[]
+    # internalscriptList=internallinkList=internalImageList=internalembededList=[]
+    # TotalObjectCount=TotalInternalObjects=TotalExternalObjects=TotalUniqueSite=0
+    # urlValue=counter=ImageValue=scriptcountnumber=LinkCount=embededcount=[]
+    # images=scripts=links=embededs=0
+    # intImages=intScripts=intLinks=intEmbeded=0
+    # extImages=extScripts=extLinks=extEmbededs=0
+    # TotalInternalObjects=TotalExternalObjects=0
+
+    # with open("finalOutput.csv", 'r') as outputCSV:
+    #     with open("final.csv", 'wbr+') as finaloutput:
+    #         # loginput=open("log.csv",'r')
+    #         readerCSV = csv.reader(outputCSV,delimiter='\t',quotechar=' ')
+    #         writerOutput = csv.writer(finaloutput,delimiter='\t',quotechar=' ',quoting=csv.QUOTE_MINIMAL)
+    #         csvfile=open('log.csv')
+    #         fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount','UniqueExternalSites','ExternalSites']
+    #         reader = csv.DictReader(csvfile,fieldnames=fieldnames)           
+    #         TotalUniqueExternalSites=0
+    #         uniqueExternalSites=0
+    #         for row in outputCSV:
+    #             field = row.strip().split('\t')
+    #             #print "field",field
+    #             TotalExObj=TotalIntObj=TotalUniSites=0
+    #             csvfile.seek(0)
+    #             for rowValue in reader:     
+    #                 if rowValue['counter'] == field[0] and rowValue['url']==field[4]:
+    #                     extImages=rowValue['ExternalImageCount']
+    #                     intImages=rowValue['InternalImageCount']
+    #                     extScripts=rowValue['ExternalscriptCount']
+    #                     intScripts=rowValue['InternalscriptCount']
+    #                     extLinks=rowValue['ExternallinkCount']
+    #                     intLinks=rowValue['InternallinkCount']
+    #                     extEmbededs=rowValue['ExternalembededCount']
+    #                     intEmbeded=rowValue['InternalembededCount']
+    #                     #uniqueExternalSites=rowValue['UniqueExternalSites']
+    #                     #print "rowValue",rowValue
+    #                 TotalExternalObjects= extImages+extScripts+extLinks+extEmbededs
+    #                 TotalExObj=TotalExObj+int(TotalExternalObjects)
+    #                 TotalInternalObjects=intImages+intScripts+intLinks+intEmbeded
+    #                 TotalIntObj=TotalIntObj+int(TotalInternalObjects)
+    #                 TotalUniqueSite=uniqueExternalSites
+    #                 #TotalUniSites=TotalUniSites+int(TotalUniqueSite)
+    #             # print "row",row
+    #             # print "TotalIntObj",TotalIntObj
+    #             # print "TotalExObj",TotalExObj
+    #             field.insert(11,TotalExObj)
+    #             field.insert(12,TotalIntObj)
+    #             #field.insert(13,TotalUniSites)
+    #             #field.insert(13,TotalUniqueExternalSites)
+    #             writerOutput.writerow(field)
     # with open("finalOutput.csv", 'r') as outputCSV:
     #     with open("final.csv", 'wbr+') as finaloutput:
     #         readerCSV = csv.reader(outputCSV,delimiter='\t',quotechar=' ')
@@ -306,7 +518,8 @@ def multiProc_crawler(domainlist,nprocs):
 
 #[Som] :These lines can be used later for multiprocessing
 resultlist=[]
-multiProc_crawler(listOfLists,2)
+print "listOfLists",listOfLists
+multiProc_crawler(listOfLists,listrange)
 
 
     # while len(procs) > 0:
