@@ -62,8 +62,8 @@ class Counter(object):
             return self.val.value
 
 #from scrapy.stats import stats
-class alexaSpider(Spider):
-    name = 'alexa'
+class alexaSpider(Spider): 
+    name='alexa'
     global counter
     global resultFile
     global tagType
@@ -74,12 +74,19 @@ class alexaSpider(Spider):
     global logwr
     global dest_ASN
     global lock
-    #global spider_queue
+    global spider_queue
+    global SpiderName
+    global resultFile
+    global logwr
+    global urllist
+    SpiderName=''
+    logwr=''
     dest_ASN=[]
     counter=Counter(0)
     tagType='A'
     dest_server_ip=[]
-    #spider_queue=Queue.Queue()
+    urllist=[]
+    spider_queue=Queue.Queue()
     #lock = Lock()
 
     logFile = codecs.open("log.csv",'wbr+')
@@ -92,12 +99,29 @@ class alexaSpider(Spider):
     we pass arguments from core.py and those will be 
     stored in kw."""
     #@profile
+    # def __init__(self, **kw ):
+    #     super(alexaSpider, self).__init__(**kw )
+    #     urllist = kw.get('domainlist')
+    #     outputfileIndex=kw.get('outputfileIndex')
+    #     print urllist
+    #     for url in urllist:
+    #         url = 'http://%s' % url
+    #         urllist.append(url)
+        #logFile = codecs.open("log%02d.csv" %outputfileIndex,'wbr+')
+        
+        #resultFile = codecs.open("output%02d.csv" %outputfileIndex,'wbr+')
+
     def __init__(self, **kw ):
         super(alexaSpider, self).__init__(**kw )
         url = kw.get('url') or kw.get('domain')
         counter=kw.get('counter')
+        # self.SpiderName=kw.get('SpiderName')
+        # print self.SpiderName
         spider_queue=kw.get('spider_queue')
-        #self.spider_queue=spider_queue
+        outputfileIndex=kw.get('outputfileIndex')
+        #SpiderName='Spider'+str(outputfileIndex)
+        #print SpiderName
+        self.spider_queue=spider_queue
         if not url.startswith('http://') and not url.startswith('https://'):
             url = 'http://%s' % url
         self.url = url
@@ -105,6 +129,16 @@ class alexaSpider(Spider):
         self.link_extractor = sle()
         self.cookies_seen = set()
         self.counter=counter
+
+
+       #logFile = codecs.open("%s.csv"%SpiderName,'wbr+')
+        #fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount','UniqueExternalSites','ExternalSites','secondlevelurl']
+        #logwr = csv.DictWriter(logFile, fieldnames=fieldnames)
+        #resultFile = codecs.open("%s+log.csv" %SpiderName,'wbr+')
+
+    # start_urls = (
+    #     'http://www.$domain/',
+    #     )
 
     """[Author:Som ,last modified:15th April 2015]
     start_requests:Overriding method of scrapy.spider.Spider class. 
@@ -115,16 +149,18 @@ class alexaSpider(Spider):
 
     #@profile
     def start_requests(self):
-        #counter.increment()
+        #counter=self.counter
+        #print counter
         # print "counter",self.counter
-        # print "self.spider_queue",self.spider_queue
-        lock=Lock()
-        lock.acquire()
-        print "Parseurl",self.url
-        request=Request(self.url,callback=self.parse,meta={'counter': self.counter},dont_filter=True)
-        lock.release()
+        #lock=Lock()
+        #lock.acquire()
+        #print "Parseurl",self.url
+        #for url in self.allowed_domains:
+            #counter.increment()
+        yield Request(self.url,callback=self.parse,meta={'counter': self.counter},method='GET',dont_filter=True)
+        #lock.release()
         # print "request",request
-        return [request]
+        #return [request]
 
    # @profile
     def parse(self,response):
@@ -143,8 +179,6 @@ class alexaSpider(Spider):
             page['depth_level']='0'
 
         counter=response.meta.get('counter')
-        # spider_queue=response.meta.get('spider_queue')
-        #print "spider_queue",spider_queue
         
         if counter:
             page['index']=counter
@@ -196,15 +230,18 @@ class alexaSpider(Spider):
         urlList.append(cname)
         dest_server_ip_values=';'.join(dest_server_ip)
         if dest_server_ip_values:
-            urlList.append(dest_server_ip_values)
+            page['destIP']=dest_server_ip_values
         else:
-            urlList.append('-')
+            page['destIP']='-'
+
+        urlList.append(page['destIP'])
         asn_no=';'.join(dest_ASN)
         if asn_no:
-            urlList.append(asn_no)
+            page['ASN_Number']=asn_no
         else :
-            urlList.append('-')
+            page['ASN_Number']='-'
 
+        urlList.append(page['ASN_Number'])
         urlList.append(page['start_time'])
         page['end_time']=datetime.now().time()
         urlList.append(page['end_time'])
@@ -222,10 +259,11 @@ class alexaSpider(Spider):
                 item=item
                 newUrlList.append(item)
         
-        #spider_queue.put(r)
+        spider_queue.put(newUrlList)
+        #print spider_queue.get()
         wr.writerow(newUrlList)
         # print "spider_queue.get",results
-        lock.release()
+        #lock.release()
         #resultFile.close()
         return r
 
@@ -318,7 +356,7 @@ class alexaSpider(Spider):
             #logwr.writerow([imgcount])
             #Imagecount=str(len(siteList))
             #logwr.writerow([siteList])
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueImg})for site in siteList if site.startswith("http://") or site.startswith("https://"))
+            r.extend(Request(site, callback=self.parse,method='HEAD',meta={'tagType': tag,'counter': counterValueImg})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
     #@profile
     def _extract_script_requests(self,response,tag,counter):
