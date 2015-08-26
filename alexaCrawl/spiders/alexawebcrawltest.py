@@ -92,7 +92,7 @@ class alexaSpider(Spider):
     logFile = codecs.open("log.csv",'wbr+')
     fieldnames = ['url', 'counter','ExternalImageCount','InternalImageCount','ExternalscriptCount','InternalscriptCount','ExternallinkCount','InternallinkCount','ExternalembededCount','InternalembededCount','UniqueExternalSites','ExternalSites','secondlevelurl']
     logwr = csv.DictWriter(logFile, fieldnames=fieldnames)
-    resultFile = codecs.open("output6.csv",'wbr+')
+    # resultFile = codecs.open("output6.csv",'wbr+')
 
     """[Author:Som ,last modified:16th April 2015]
     def __init__ :this act as constructor for python
@@ -169,8 +169,8 @@ class alexaSpider(Spider):
         global resultFile
         global spider_queue
         page = self._get_item(response)
-        lock = Lock()
-        lock.acquire()
+        # lock = Lock()
+        # lock.acquire()
         depth = page['depth_level']
         depth_value=depth.get('depth')
         if depth_value:
@@ -246,7 +246,7 @@ class alexaSpider(Spider):
         page['end_time']=datetime.now().time()
         urlList.append(page['end_time'])
 
-        wr = csv.writer(resultFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+        # wr = csv.writer(resultFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
         newUrlList=[]
         for item in urlList:
             if isinstance(item, unicode):
@@ -259,12 +259,14 @@ class alexaSpider(Spider):
                 item=item
                 newUrlList.append(item)
         
-        spider_queue.put(newUrlList)
+        #spider_queue.put(newUrlList)
         #print spider_queue.get()
-        wr.writerow(newUrlList)
+        # wr.writerow(newUrlList)
         # print "spider_queue.get",results
         #lock.release()
         #resultFile.close()
+        #spider_queue.task_done()
+        #print spider_queue.get()
         return r
 
 
@@ -306,7 +308,7 @@ class alexaSpider(Spider):
         uniqueExternalSites=set()
         externalSites=[]
         for site in siteList: 
-            if site.startswith("http://") or site.startswith("https://"):
+            if site.startswith("http://") or site.startswith("https://") or site.startswith("http://www.") or site.startswith("https://www."):
                 externalSitesCount+=1
                 uniqueExternalSites.add(getsecondleveldomain(site))
                 externalSites.append(site)
@@ -474,7 +476,7 @@ class alexaSpider(Spider):
             logwr.writerow({'url': response.url, 'counter': counterValueEmded,'InternalembededCount':InternalembededCount,'ExternalembededCount':externalembededCount,'UniqueExternalSites':uniqueExternalSites,'ExternalSites':externalSites,'secondlevelurl':secondlevelurl})
             #lock.acquire()
             #lock.release()
-            r.extend(Request(site, callback=self.parse,meta={'tagType': tag,'counter': counterValueEmded})for site in siteList if site.startswith("http://") or site.startswith("https://"))
+            r.extend(Request(site, callback=self.parse,method='HEAD',meta={'tagType': tag,'counter': counterValueEmded})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
     #@profile
     def _set_title(self, page, response):
