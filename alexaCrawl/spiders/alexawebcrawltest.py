@@ -204,7 +204,6 @@ class alexaSpider(CrawlSpider):
     #     #return [request]
 
     def parse_start_url(self, response):
-        print response.request.meta['redirect_urls']
         if response.request.meta['redirect_urls']:
             url=response.request.meta['redirect_urls'][0]
             newUrl=urlparse(url).netloc
@@ -217,6 +216,17 @@ class alexaSpider(CrawlSpider):
         elif 'www.' in newUrl:
             newUrl=newUrl.replace('www.','')
         response.meta['counter']=self.counterValue.get(newUrl)
+        # if not response.meta['counter']:
+        #     url=response.request.meta['redirect_urls'][0]
+        #     newUrl=urlparse(url).netloc
+        #     newUrl=response.url
+        #     if 'http://www.'in newUrl:
+        #         newUrl=newUrl.replace('http://www.','')
+        #     elif 'http://' in newUrl:
+        #         newUrl=newUrl.replace('http://','')
+        #     elif 'www.' in newUrl:
+        #         newUrl=newUrl.replace('www.','')
+        #     response.meta['counter']=self.counterValue.get(newUrl)
         return self.parse_item(response)
    # @profile
     def parse_item(self,response):
