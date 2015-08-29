@@ -57,7 +57,7 @@ urlIndexlist=dict()
 
 row_no=1
 code_chunk=1
-listrange=20
+listrange=10
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 
@@ -234,7 +234,6 @@ def multiProc_crawler(domainlist,nprocs):
         precedence goes to key value pairs in latter dicts.
         '''
         result = {}
-        print dict_args
         for dictionary in dict_args:
             result.update(dictionary)
         return result
@@ -340,7 +339,6 @@ def multiProc_crawler(domainlist,nprocs):
 
     for key,value in keyValuePairLine.items():
             value1=merge_dicts(value[0],value[1],value[2],value[3])
-            print value1
             keyValuePairLineNew[key]=value1
 
     for row in outputCSV:
@@ -473,7 +471,6 @@ def multiProc_crawler(domainlist,nprocs):
 #[Som] :These lines can be used later for multiprocessing
 resultlist=[]
 multiProc_crawler(listOfLists,listrange)
-print "********************************************"
 logFile = open("output6.csv",'r')
 logwr = csv.reader(logFile,skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
 wordcount=list()
@@ -481,9 +478,7 @@ UrlNotInResultFile=list()
 for line in logwr:
     if line[0] not in wordcount:
         wordcount.append(line[0])
-print len(wordcount)
 IndexNotInResultFile=list(set(IndexInTop1mFile) - set(wordcount))
-print "IndexNotInResultFile",IndexNotInResultFile
 def get_key_from_value(my_dict, v):
     for key,value in my_dict.items():
         if value == v:
@@ -498,12 +493,9 @@ def get_key_from_value(my_dict, v):
 #             UrlNotInResultFile.append(rowValues[1])
 for item in IndexNotInResultFile:
     UrlNotInResultFile.append(get_key_from_value(urlIndexlist,item))
-print UrlNotInResultFile
 listrangeNew=1
 listOfListsNew=[]
 listOfListsNew.append(UrlNotInResultFile)
-print "listOfListsNew",listOfListsNew
-print "length",len(UrlNotInResultFile)
 if len(UrlNotInResultFile) >0 :
     multiProc_crawler(listOfListsNew,1)
 logFile.close()
