@@ -20,6 +20,7 @@ from twisted.internet import reactor
 from scrapy.crawler import Crawler
 from scrapy import log
 import codecs
+import sys
 
 class Counter(object):
     def __init__(self, initval=0):
@@ -56,7 +57,7 @@ urlIndexlist=dict()
 
 row_no=1
 code_chunk=1
-listrange=20
+listrange=50
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 
@@ -149,17 +150,26 @@ def worker(urllist,out_q,i):
         urlList.append(item['start_time'])
         urlList.append(item['end_time'])
         items.append(urlList)
-    for url in urllist:
-        spider = alexaSpider(domain=url,counter=urlIndexlist.get(url),outputfileIndex=i,spider_queue=out_q)
-        settings = get_project_settings()
-        crawler = Crawler(settings)
-        crawler.signals.connect(add_item, signals.item_passed)
-        crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
-        crawler.configure()
-        crawler.crawl(spider)
-        reactor_control.add_crawler()
-        crawler.start()
-    
+    # for url in urllist:
+    #     spider = alexaSpider(domain=url,counter=urlIndexlist.get(url),outputfileIndex=i,spider_queue=out_q)
+    #     settings = get_project_settings()
+    #     crawler = Crawler(settings)
+    #     crawler.signals.connect(add_item, signals.item_passed)
+    #     crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
+    #     crawler.configure()
+    #     crawler.crawl(spider)
+    #     reactor_control.add_crawler()
+    #     crawler.start()
+    spider = alexaSpider(domain=urllist,counter=urlIndexlist,outputfileIndex=i,spider_queue=out_q)
+    settings = get_project_settings()
+    crawler = Crawler(settings)
+    crawler.signals.connect(add_item, signals.item_passed)
+    crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
+    crawler.configure()
+    crawler.crawl(spider)
+    reactor_control.add_crawler()
+    crawler.start()
+
     settings = get_project_settings()
     crawler = Crawler(settings)
     reactor.run()
@@ -204,19 +214,19 @@ def multiProc_crawler(domainlist,nprocs):
         job.join()
 
 
-    # maxInt = sys.maxsize
-    # decrement = True
+    maxInt = sys.maxsize
+    decrement = True
 
-    # while decrement:
-    #     # decrease the maxInt value by factor 10 
-    #     # as long as the OverflowError occurs.
+    while decrement:
+        # decrease the maxInt value by factor 10 
+        # as long as the OverflowError occurs.
 
-    #     decrement = False
-    #     try:
-    #         csv.field_size_limit(maxInt)
-    #     except OverflowError:
-    #         maxInt = int(maxInt/10)
-    #         decrement = True
+        decrement = False
+        try:
+            csv.field_size_limit(maxInt)
+        except OverflowError:
+            maxInt = int(maxInt/10)
+            decrement = True
 
     def merge_dicts(*dict_args):
         '''
