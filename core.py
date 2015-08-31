@@ -166,6 +166,8 @@ def worker(urllist,out_q,i):
     crawler.signals.connect(add_item, signals.item_passed)
     crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
     crawler.configure()
+    # crawler.settings.set('JOBDIR','crawls/alexa-1')
+    # settings.overrides['JOBDIR']= 'j'
     crawler.crawl(spider)
     reactor_control.add_crawler()
     crawler.start()
