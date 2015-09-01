@@ -59,7 +59,7 @@ urlIndexlist=dict()
 
 row_no=1
 code_chunk=1
-listrange=5
+listrange=20
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 
@@ -506,6 +506,8 @@ for item in IndexNotInResultFile:
 listrangeNew=1
 listOfListsNew=[]
 listOfListsNew.append(UrlNotInResultFile)
-if len(UrlNotInResultFile) >0 :
+if len(UrlNotInResultFile) >10 :
+    multiProc_crawler(listOfListsNew,10)
+else :
     multiProc_crawler(listOfListsNew,1)
 logFile.close()
