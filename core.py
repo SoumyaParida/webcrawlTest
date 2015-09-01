@@ -21,7 +21,6 @@ from scrapy.crawler import Crawler
 from scrapy import log
 import codecs
 import sys
-from guppy import hpy
 
 
 class Counter(object):
