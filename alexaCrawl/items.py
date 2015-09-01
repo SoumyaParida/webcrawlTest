@@ -17,6 +17,26 @@ class Page(Item):
     EmbededCount=Field()
     start_time=Field()
     end_time=Field()
+
+    ExternalImageCount=Field()
+    InternalImageCount=Field()
+    UniqueExternalSitesForImage=Field()
+
+    ExternalscriptCount=Field()
+    InternalscriptCount=Field()
+    UniqueExternalSitesForScript=Field()
+
+    ExternallinkCount=Field()
+    InternallinkCount=Field()
+    UniqueExternalSitesForLink=Field()
+
+    ExternalembededCount=Field()
+    InternalembededCount=Field()
+    UniqueExternalSitesForEmbeded=Field()
+
+    # UniqueExternalSites=Field()
+    # ExternalSites=Field()
+    # secondlevelurl=Field()
     
     #depth_level=Field()
     #title = Field()

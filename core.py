@@ -21,6 +21,8 @@ from scrapy.crawler import Crawler
 from scrapy import log
 import codecs
 import sys
+from guppy import hpy
+
 
 class Counter(object):
     def __init__(self, initval=0):
@@ -149,28 +151,34 @@ def worker(urllist,out_q,i):
         urlList.append(item['ASN_Number'])
         urlList.append(item['start_time'])
         urlList.append(item['end_time'])
+
+        urlList.append(item['InternalImageCount'])
+        urlList.append(item['ExternalImageCount'])
+        urlList.append(item['UniqueExternalSitesForImage'])
+
+        urlList.append(item['InternalscriptCount'])
+        urlList.append(item['ExternalscriptCount'])
+        urlList.append(item['UniqueExternalSitesForScript'])
+
+        urlList.append(item['InternallinkCount'])
+        urlList.append(item['ExternallinkCount'])
+        urlList.append(item['UniqueExternalSitesForLink'])
+
+        urlList.append(item['InternalembededCount'])
+        urlList.append(item['ExternalembededCount'])
+        urlList.append(item['UniqueExternalSitesForEmbeded'])
+
         items.append(urlList)
-    # for url in urllist:
-    #     spider = alexaSpider(domain=url,counter=urlIndexlist.get(url),outputfileIndex=i,spider_queue=out_q)
-    #     settings = get_project_settings()
-    #     crawler = Crawler(settings)
-    #     crawler.signals.connect(add_item, signals.item_passed)
-    #     crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
-    #     crawler.configure()
-    #     crawler.crawl(spider)
-    #     reactor_control.add_crawler()
-    #     crawler.start()
-    spider = alexaSpider(domain=urllist,counter=urlIndexlist,outputfileIndex=i,spider_queue=out_q)
-    settings = get_project_settings()
-    crawler = Crawler(settings)
-    crawler.signals.connect(add_item, signals.item_passed)
-    crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
-    crawler.configure()
-    # crawler.settings.set('JOBDIR','crawls/alexa-1')
-    # settings.overrides['JOBDIR']= 'j'
-    crawler.crawl(spider)
-    reactor_control.add_crawler()
-    crawler.start()
+    for url in urllist:
+        spider = alexaSpider(domain=url,counter=urlIndexlist.get(url),outputfileIndex=i,spider_queue=out_q)
+        settings = get_project_settings()
+        crawler = Crawler(settings)
+        crawler.signals.connect(add_item, signals.item_passed)
+        crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
+        crawler.configure()
+        crawler.crawl(spider)
+        reactor_control.add_crawler()
+        crawler.start()
 
     settings = get_project_settings()
     crawler = Crawler(settings)
