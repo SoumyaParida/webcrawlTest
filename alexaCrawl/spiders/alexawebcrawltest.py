@@ -24,7 +24,6 @@ import Queue
 # from scrapy.contrib.linkextractors.sgml import SgmlLinkExtractor
 # from scrapy.contrib.linkextractors import LxmlLinkExtractor
 from scrapy.contrib.linkextractors.lxmlhtml import LxmlLinkExtractor
-from guppy import hpy
 
 #from guppy import hpy
 #import geoiplookup
@@ -469,20 +468,23 @@ class alexaSpider(Spider):
                 # 'UniqueExternalSites':uniqueExternalSites,
                 # 'ExternalSites':externalSites,
                 # 'secondlevelurl':secondlevelurl})
-            print "InternalImageCount",InternalImageCount
-            if InternalImageCount:
-                page['InternalImageCount']=InternalImageCount
-            else:
-                page['InternalImageCount']='-'
+            # print "InternalImageCount",InternalImageCount
+            # if InternalImageCount:
+            #     page['InternalImageCount']=InternalImageCount
+            # else:
+            #     page['InternalImageCount']='-'
 
-            if externalImageCount:
-                page['ExternalImageCount']=externalImageCount
-            else:
-                page['ExternalImageCount']='-'
-            if uniqueExternalSites:
-                page['UniqueExternalSitesForImage']=uniqueExternalSites
-            else:
-                page['UniqueExternalSitesForImage']='-'
+            # if externalImageCount:
+            #     page['ExternalImageCount']=externalImageCount
+            # else:
+            #     page['ExternalImageCount']='-'
+            # if uniqueExternalSites:
+            #     page['UniqueExternalSitesForImage']=uniqueExternalSites
+            # else:
+            #     page['UniqueExternalSitesForImage']='-'
+            page['InternalImageCount']=InternalImageCount
+            page['ExternalImageCount']=externalImageCount
+            page['UniqueExternalSitesForImage']=uniqueExternalSites
             r.extend(Request(site, callback=self.parse,method='HEAD',meta={'tagType': tag,'counter': counterValueImg,'download_timeout':5})for site in siteList if site.startswith("http://") or site.startswith("https://"))
         return r
     #@profile
