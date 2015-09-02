@@ -53,6 +53,7 @@ class alexaSpider(Spider):
     global logwr
     global urllist
     global hp
+    global resulturldict
     SpiderName=''
     logwr=''
     dest_ASN=[]
@@ -62,6 +63,7 @@ class alexaSpider(Spider):
     urllist=[]
     spider_queue=Queue.Queue()
     urlIndexlist=dict()
+    resulturldict=dict()
     start_urls = []
     allowed_domains=[]
 
@@ -74,16 +76,32 @@ class alexaSpider(Spider):
         super(alexaSpider, self).__init__(**kw )
         self.urllistfile = kw.get('domain')
         self.urlIndexlist = kw.get('counter')
+        # print self.urllistfile
+        # print self.urlIndexlist
+        for url in self.urllistfile:
+            if not url.startswith('http://') and not url.startswith('https://'):
+                newurl = 'http://%s' % url
+            resulturldict[newurl]=self.urlIndexlist.get(url)
+        # for row in self.urllistfile:
+        #     rowValue=', '.join(row)
+        #     rowValues=rowValue.split(",")
+        #     if not rowValues[1].startswith('http://') and not rowValues[1].startswith('https://'):
+        #         rowValues[1] = 'http://%s' % rowValues[1]
+        #     urlIndexlist[rowValues[1]]=rowValues[0]
         
  
     def start_requests(self):
         self.link_extractor = sle()
         self.cookies_seen = set()
-        for url in self.urllistfile:
-            indexUnique=self.urlIndexlist.get(url)
-            if not url.startswith('http://') and not url.startswith('https://'):
-                url = 'http://%s' % url
+        for url in resulturldict:
+            #self.counter=counter.increment()
+            indexUnique=resulturldict.get(url)
             yield Request(url, meta={'counter': indexUnique},method='GET',callback=self.parse,dont_filter=True)
+    #     # for url in self.urllistfile:
+        #     indexUnique=self.urlIndexlist.get(url)
+        #     if not url.startswith('http://') and not url.startswith('https://'):
+        #         url = 'http://%s' % url
+        #     yield Request(url, meta={'counter': indexUnique},method='GET',callback=self.parse,dont_filter=True)
 
     """[Author:Som ,last modified:15th April 2015]
     start_requests:Overriding method of scrapy.spider.Spider class. 
@@ -94,7 +112,7 @@ class alexaSpider(Spider):
 
    # @profile
     def parse(self,response):
-        print response.url
+        # print response.url
         urlList=[]
         r=[]
         
