@@ -134,6 +134,7 @@ def worker(urllist,out_q,i):
     files = {}
     items=[]
     newUrlList=[]
+    dircount=0
     def add_item(item):
         urlList=[]
         urlList.append(item['index'])
@@ -169,6 +170,7 @@ def worker(urllist,out_q,i):
 
         items.append(urlList)
     for url in urllist:
+        dircount+=1
         spider = alexaSpider(domain=url,counter=urlIndexlist.get(url),outputfileIndex=i,spider_queue=out_q)
         settings = get_project_settings()
         crawler = Crawler(settings)
@@ -176,6 +178,8 @@ def worker(urllist,out_q,i):
         crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
         crawler.configure()
         crawler.crawl(spider)
+        jobdir='alexa-1'+str(i)+str(dircount)
+        crawler.settings.set('JOBDIR',jobdir)
         reactor_control.add_crawler()
         crawler.start()
 
