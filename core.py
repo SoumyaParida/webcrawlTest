@@ -58,7 +58,7 @@ urlIndexlist=dict()
 
 row_no=1
 code_chunk=1
-listrange=20
+listrange=5
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 
