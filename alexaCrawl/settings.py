@@ -7,7 +7,7 @@
 #
 #     http://doc.scrapy.org/en/latest/topics/settings.html
 #
-import alexaCrawl.spiders.middleware
+# import alexaCrawl.spiders.middleware
 #from pybloomfilter import BloomFilter
 
 BOT_NAME = 'alexaCrawl'
@@ -34,11 +34,15 @@ WEBSERVICE_ENABLED=False
 TELNETCONSOLE_ENABLED=False
 # HTTPERROR_ALLOWED_CODES=[200,404,301,302]
 HTTPERROR_ALLOW_ALL=True
+
+# CONCURRENT_REQUESTS = 10
+# CONCURRENT_REQUESTS_BY_DOMAIN=100
+
 CONCURRENT_REQUESTS = 10
 CONCURRENT_REQUESTS_BY_DOMAIN=8
+
 DOWNLOAD_TIMEOUT = 60
 AJAXCRAWL_ENABLED = True
-MEMUSAGE_REPORT=True
 
 #settings.overrides['DOWNLOADER_MIDDLEWARES'] = {'seerspider.SpiderFailSignal': 901}
 
