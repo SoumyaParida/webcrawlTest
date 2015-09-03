@@ -18,6 +18,7 @@ from scrapy.utils.project import get_project_settings
 from urlparse import urlparse
 from twisted.internet import reactor
 from scrapy.crawler import Crawler
+from scrapy import cmdline
 from scrapy import log
 import codecs
 import sys
@@ -128,7 +129,10 @@ def worker(urllist,out_q,i):
 
         items.append(urlList)
     
-    spider = alexaSpider(domain=urllist,counter=urlIndexlist,outputfileIndex=i,spider_queue=out_q)
+    # spider = alexaSpider(domain=urllist,counter=urlIndexlist,outputfileIndex=i,spider_queue=out_q)
+    cmdline.execute([
+    'scrapy', 'crawl', 'alexa',
+    '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist)])
     settings = get_project_settings()
     crawler = Crawler(settings)
     crawler.signals.connect(add_item, signals.item_passed)
