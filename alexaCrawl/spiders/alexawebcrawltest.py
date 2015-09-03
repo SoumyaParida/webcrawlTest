@@ -19,6 +19,7 @@ import pygeoip
 import line_profiler
 import Queue
 from scrapy.contrib.linkextractors.lxmlhtml import LxmlLinkExtractor
+import ast
 
 class Counter(object):
     def __init__(self, initval=0):
@@ -54,7 +55,6 @@ class alexaSpider(Spider):
     global urllist
     global hp
     global resulturldict
-    SpiderName=''
     logwr=''
     dest_ASN=[]
     counter=Counter(0)
@@ -71,24 +71,50 @@ class alexaSpider(Spider):
     def __init__ :this act as constructor for python
     we pass arguments from core.py and those will be 
     stored in kw."""
+
+    # with open('top-1m.csv') as csvfile:
+    #     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|') 
+    #     for row in spamreader:
+    #         rowValue=', '.join(row)
+    #         rowValues=rowValue.split(",")
+    #         if not rowValues[1].startswith('http://') and not rowValues[1].startswith('https://'):
+    #             rowValues[1] = 'http://%s' % rowValues[1]
+    #         urlIndexlist[rowValues[1]]=rowValues[0]
+
+    # def __init__(self, **kw ):
+    #     super(alexaSpider, self).__init__(**kw )
+    #     self.urllistfile = kw.get('part')
+    #     self.urlIndexlist = kw.get('counter')
+    #     for url in self.urllistfile:
+    #         if not url.startswith('http://') and not url.startswith('https://'):
+    #             newurl = 'http://%s' % url
+    #         resulturldict[newurl]=self.urlIndexlist.get(url)
     
-    def __init__(self, **kw ):
-        super(alexaSpider, self).__init__(**kw )
-        self.urllistfile = kw.get('domain')
-        self.urlIndexlist = kw.get('counter')
-        # print self.urllistfile
-        # print self.urlIndexlist
-        for url in self.urllistfile:
-            if not url.startswith('http://') and not url.startswith('https://'):
-                newurl = 'http://%s' % url
-            resulturldict[newurl]=self.urlIndexlist.get(url)
+    # def __init__(self, **kw ):
+    #     super(alexaSpider, self).__init__(**kw )
+    #     self.urllistfile = kw.get('domain')
+    #     self.urlIndexlist = kw.get('counter')
+    #     print self.urllistfile
+    #     print self.urlIndexlist
+    #     for url in self.urllistfile:
+    #         if not url.startswith('http://') and not url.startswith('https://'):
+    #             newurl = 'http://%s' % url
+    #             print url
+    #         resulturldict[newurl]=self.urlIndexlist.get(url)
         # for row in self.urllistfile:
         #     rowValue=', '.join(row)
         #     rowValues=rowValue.split(",")
         #     if not rowValues[1].startswith('http://') and not rowValues[1].startswith('https://'):
         #         rowValues[1] = 'http://%s' % rowValues[1]
         #     urlIndexlist[rowValues[1]]=rowValues[0]
-        
+    
+    def __init__ (self,arg1,arg2):
+        self.urllistfile=ast.literal_eval(arg1)
+        self.urlIndexlist=ast.literal_eval(arg2)
+        for url in self.urllistfile:
+            if not url.startswith('http://') and not url.startswith('https://'):
+                newurl = 'http://%s' % url
+            resulturldict[newurl]=self.urlIndexlist.get(url)    
  
     def start_requests(self):
         self.link_extractor = sle()
