@@ -67,6 +67,8 @@ class alexaSpider(Spider):
     start_urls = []
     allowed_domains=[]
 
+    resultFile = codecs.open("output6.csv",'wbr+')
+
     """[Author:Som ,last modified:16th April 2015]
     def __init__ :this act as constructor for python
     we pass arguments from core.py and those will be 
@@ -214,6 +216,8 @@ class alexaSpider(Spider):
         page['end_time']=datetime.now().time()
         urlList.append(page['end_time'])
 
+        wr = csv.writer(resultFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+
         newUrlList=[]
         for item in urlList:
             if isinstance(item, unicode):
@@ -225,6 +229,8 @@ class alexaSpider(Spider):
             else:
                 item=item
                 newUrlList.append(item)
+
+        wr.writerow(newUrlList)
         
         r.extend(self._extract_requests(response,counter)) #external site link
         r.extend(self._extract_img_requests(response,tagType,counter,page)) #link to img files
