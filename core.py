@@ -59,7 +59,7 @@ urlIndexlist=dict()
 
 row_no=1
 code_chunk=1
-listrange=2
+listrange=10
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 
@@ -132,7 +132,7 @@ def worker(urllist,out_q,i):
     # spider = alexaSpider(domain=urllist,counter=urlIndexlist,outputfileIndex=i,spider_queue=out_q)
     cmdline.execute([
     'scrapy', 'crawl', 'alexa',
-    '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist)])
+    '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist),'-o','item'+str(i)+'.csv'])
     settings = get_project_settings()
     crawler = Crawler(settings)
     crawler.signals.connect(add_item, signals.item_passed)
