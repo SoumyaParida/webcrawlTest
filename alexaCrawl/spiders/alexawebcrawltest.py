@@ -175,6 +175,7 @@ class alexaSpider(Spider):
         urlList.append(page['content_length'])
         urlList.append(page['url'].strip())
         cookieStr=';'.join(page['newcookies'])
+        cookieStr = cookieStr.replace(" ","")
         urlList.append(cookieStr.strip())
         urlList.append(page['tagType'])
         cname=';'.join(page['CNAMEChain'])
