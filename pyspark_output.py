@@ -31,29 +31,45 @@ def parseApacheLogLine(logline):
                or the original invalid log line and 0
     """
     match = re.search(APACHE_ACCESS_LOG_PATTERN, logline)
+
     if match is None:
         return (logline, 0)
-    size_field = match.group(4)
+    size_field = match.group(7)
     if size_field == '-':
         size = long(0)
     else:
-        size = long(match.group(4))
+        size = long(match.group(7))
+
+    # print "unique_id=" ,match.group(1)
+    # print "    depth         =" , match.group(3)
+    # print "    response_code =" , int(match.group(5))
+    # print "    content_size  =" , size
+    # print "    url           =" , match.group(9)
+    # print "    cookies       =" , match.group(11)
+    # print "    objecttype    =" , match.group(13)
+    # print "    host          =" , match.group(15)
+    # print "    ip_address    =" , match.group(17)
+    # print "    asn_number    =" , match.group(19)
+    # print "    start_time    =" , parse_apache_time(match.group(21))
+    # print "    end_time      =" , parse_apache_time(match.group(23))
     return (Row(
         unique_id     = match.group(1),
-        depth         = match.group(2),
-        response_code = int(match.group(3)),
+        depth         = match.group(3),
+        response_code = int(match.group(5)),
         content_size  = size,
-        url           = match.group(5),
-        cookies       = match.group(6),
-        objecttype    = match.group(7),
-        host          = match.group(8),
-        ip_address    = match.group(9),
-        asn_number    = match.group(10),
-        start_time    = match.group(11),
-        end_time      = match.group(12)
+        url           = match.group(9),
+        cookies       = match.group(11),
+        objecttype    = match.group(13),
+        host          = match.group(15),
+        ip_address    = match.group(17),
+        asn_number    = match.group(19),
+        start_time    = match.group(21),
+        end_time      = match.group(23)
     ), 1)
 
-APACHE_ACCESS_LOG_PATTERN = '(\S+)  (\d{1}) (\d{3}) (\w+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)'
+# APACHE_ACCESS_LOG_PATTERN = '(\S+)  (\d{1}) (\d{3}) (\w+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)'
+
+APACHE_ACCESS_LOG_PATTERN = '(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)'
 
 
 
@@ -63,6 +79,7 @@ APACHE_ACCESS_LOG_PATTERN = '(\S+)  (\d{1}) (\d{3}) (\w+)   (\S+)   (\S+)   (\S+
 # inputPath = os.path.join('cs100', 'lab2', 'apache.access.log.PROJECT')
 # print inputPath
 logFile = os.path.join('/home/soumya/Documents/courses/output1m.csv')
+# logFile = os.path.join('/home/soumya/Documents/thesis/webcrawlTest.git/webcrawlTest/trunk/test.csv')
 print logFile
 
 
