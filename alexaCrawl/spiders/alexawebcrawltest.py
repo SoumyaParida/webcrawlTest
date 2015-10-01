@@ -546,7 +546,7 @@ class alexaSpider(Spider):
                     if not str(ip_address) in dest_server_ip:
                          dest_server_ip.append(str(ip_address))
                     #asn_info=IPWhois(str(IPs))
-                    gir = pygeoip.GeoIP('/usr/share/GeoIP/GeoIPASNum.dat',
+                    gir = pygeoip.GeoIP('GeoIPASNum.dat',
                        flags=pygeoip.const.GEOIP_STANDARD)
                     #gi.asn_by_name(IPs)
                     # if str(ip_address):
