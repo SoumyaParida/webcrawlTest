@@ -89,79 +89,85 @@ This function can be used to create multiple spiders
 inside single process"""
 
 def worker(urllist,out_q,i):
-    outdict =    {}
-    files = {}
-    items=[]
-    newUrlList=[]
-    dircount=0
-    def add_item(item):
-        urlList=[]
-        urlList.append(item['index'])
-        urlList.append(item['depth_level'])
-        urlList.append(item['httpResponseStatus'])
-        urlList.append(item['content_length'])
-        urlList.append(item['url'].strip())
-        cookieStr=';'.join(item['newcookies'])
-        urlList.append(cookieStr.strip())
-        urlList.append(item['tagType'])
-        cname=';'.join(item['CNAMEChain'])
-        urlList.append(cname)
-        urlList.append(item['destIP'])
-        urlList.append(item['ASN_Number'])
-        urlList.append(item['start_time'])
-        urlList.append(item['end_time'])
-
-        urlList.append(item['InternalImageCount'])
-        urlList.append(item['ExternalImageCount'])
-        urlList.append(item['UniqueExternalSitesForImage'])
-
-        urlList.append(item['InternalscriptCount'])
-        urlList.append(item['ExternalscriptCount'])
-        urlList.append(item['UniqueExternalSitesForScript'])
-
-        urlList.append(item['InternallinkCount'])
-        urlList.append(item['ExternallinkCount'])
-        urlList.append(item['UniqueExternalSitesForLink'])
-
-        urlList.append(item['InternalembededCount'])
-        urlList.append(item['ExternalembededCount'])
-        urlList.append(item['UniqueExternalSitesForEmbeded'])
-
-        items.append(urlList)
-    
-    # spider = alexaSpider(domain=urllist,counter=urlIndexlist,outputfileIndex=i,spider_queue=out_q)
     cmdline.execute([
     'scrapy', 'crawl', 'alexa',
-    '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist),'-o','item'+str(i)+'.csv'])
-    settings = get_project_settings()
-    crawler = Crawler(settings)
-    crawler.signals.connect(add_item, signals.item_passed)
-    crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
-    crawler.configure()
-    crawler.crawl(spider)
-    jobdir='alexa-1'+str(i)+str(dircount)
-    crawler.settings.set('JOBDIR',jobdir)
-    reactor_control.add_crawler()
-    crawler.start()
-    
-    settings = get_project_settings()
-    crawler = Crawler(settings)
-    reactor.run()
-
-    for value in items:
-        outputList=[]
-        for item in value:
-            if isinstance(item, unicode):
-                item=item.encode('utf-8')
-                outputList.append(item)
-            elif isinstance(item,str):
-                item=item
-                outputList.append(item)
-            else:
-                item=item
-                outputList.append(item)
-        wr.writerow(outputList)
+    '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist)])
     return
+
+# def worker(urllist,out_q,i):
+#     outdict =    {}
+#     files = {}
+#     items=[]
+#     newUrlList=[]
+#     dircount=0
+#     def add_item(item):
+#         urlList=[]
+#         urlList.append(item['index'])
+#         urlList.append(item['depth_level'])
+#         urlList.append(item['httpResponseStatus'])
+#         urlList.append(item['content_length'])
+#         urlList.append(item['url'].strip())
+#         cookieStr=';'.join(item['newcookies'])
+#         urlList.append(cookieStr.strip())
+#         urlList.append(item['tagType'])
+#         cname=';'.join(item['CNAMEChain'])
+#         urlList.append(cname)
+#         urlList.append(item['destIP'])
+#         urlList.append(item['ASN_Number'])
+#         urlList.append(item['start_time'])
+#         urlList.append(item['end_time'])
+
+#         urlList.append(item['InternalImageCount'])
+#         urlList.append(item['ExternalImageCount'])
+#         urlList.append(item['UniqueExternalSitesForImage'])
+
+#         urlList.append(item['InternalscriptCount'])
+#         urlList.append(item['ExternalscriptCount'])
+#         urlList.append(item['UniqueExternalSitesForScript'])
+
+#         urlList.append(item['InternallinkCount'])
+#         urlList.append(item['ExternallinkCount'])
+#         urlList.append(item['UniqueExternalSitesForLink'])
+
+#         urlList.append(item['InternalembededCount'])
+#         urlList.append(item['ExternalembededCount'])
+#         urlList.append(item['UniqueExternalSitesForEmbeded'])
+
+#         items.append(urlList)
+    
+#     # spider = alexaSpider(domain=urllist,counter=urlIndexlist,outputfileIndex=i,spider_queue=out_q)
+#     cmdline.execute([
+#     'scrapy', 'crawl', 'alexa',
+#     '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist),'-o','item'+str(i)+'.csv'])
+#     settings = get_project_settings()
+#     crawler = Crawler(settings)
+#     crawler.signals.connect(add_item, signals.item_passed)
+#     crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
+#     crawler.configure()
+#     crawler.crawl(spider)
+#     jobdir='alexa-1'+str(i)+str(dircount)
+#     crawler.settings.set('JOBDIR',jobdir)
+#     reactor_control.add_crawler()
+#     crawler.start()
+    
+#     settings = get_project_settings()
+#     crawler = Crawler(settings)
+#     reactor.run()
+
+#     for value in items:
+#         outputList=[]
+#         for item in value:
+#             if isinstance(item, unicode):
+#                 item=item.encode('utf-8')
+#                 outputList.append(item)
+#             elif isinstance(item,str):
+#                 item=item
+#                 outputList.append(item)
+#             else:
+#                 item=item
+#                 outputList.append(item)
+#         wr.writerow(outputList)
+#     return
 
 def merge_dicts(*dict_args):
     '''
@@ -222,6 +228,7 @@ for item in IndexNotInResultFile:
     UrlNotInResultFile.append(get_key_from_value(urlIndexlist,item))
 listrangeNew=1
 listOfListsNew=[]
+print "UrlNotInResultFile",UrlNotInResultFile
 listOfListsNew.append(UrlNotInResultFile)
 if len(UrlNotInResultFile) >10 :
     multiProc_crawler(listOfListsNew,10)
