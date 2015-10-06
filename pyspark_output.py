@@ -6,6 +6,12 @@ import sys
 import os
 from pyspark import SparkContext
 
+import numpy as np
+import statsmodels.api as sm # recommended import according to the docs
+import matplotlib.pyplot as plt
+from math import exp
+from pylab import *
+
 month_map = {'Jan': 1, 'Feb': 2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7,
     'Aug':8,  'Sep': 9, 'Oct':10, 'Nov': 11, 'Dec': 12}
 
@@ -53,7 +59,7 @@ def parseApacheLogLine(logline):
     # print "    start_time    =" , parse_apache_time(match.group(21))
     # print "    end_time      =" , parse_apache_time(match.group(23))
     return (Row(
-        unique_id     = match.group(1),
+        unique_id     = int(match.group(1)),
         depth         = match.group(3),
         response_code = int(match.group(5)),
         content_size  = size,
@@ -123,3 +129,189 @@ def parseLogs():
 
 
 parsed_logs, access_logs, failed_logs = parseLogs()
+
+#=================================================================
+#Content Size
+
+# import statsmodels.api as sm
+
+# content_sizes_count=access_logs.map(lambda log: log.content_size).filter(lambda value:value != 0).cache()
+# print 'Content Size Avg: %i, Min: %i, Max: %s' % (
+#     content_sizes_count.reduce(lambda a, b : a + b) / content_sizes_count.count(),
+#     content_sizes_count.min(),
+#     content_sizes_count.max())
+# content_sizes_count_list=content_sizes_count.collect()
+
+# Content_sizes_first_100000_webiste=access_logs.map(lambda log: (log.unique_id,log.content_size)).cache()
+# print Content_sizes_first_100000_webiste.take(10)
+# Content_sizes_first_100000_webiste_count=Content_sizes_first_100000_webiste.filter(lambda x,y : x < 100000 )
+# print Content_sizes_first_100000_webiste_count.take(10)
+# print 'Content Size Avg: %i, Min: %i, Max: %s' % (
+#     Content_sizes_first_100000_webiste_count.reduce(lambda a, b : a + b) / Content_sizes_first_100000_webiste_count.count(),
+#     Content_sizes_first_100000_webiste_count.min(),
+#     Content_sizes_first_100000_webiste_count.max())
+# Content_sizes_first_100000_webiste_count_list=Content_sizes_first_100000_webiste_count.collect()
+
+# X=sorted(content_sizes_count_list)
+# Y=[]
+# l=len(X)
+# Y.append(float(1)/l)
+# for i in range(2,l+1):
+#     Y.append(float(1)/l+Y[i-2])
+# plt.plot(X,Y,marker='o',label='xyz')
+# plt.show()
+
+# X=sorted(Content_sizes_first_100000_webiste_count_list)
+# Y=[]
+# l=len(X)
+# Y.append(float(1)/l)
+# for i in range(2,l+1):
+#     Y.append(float(1)/l+Y[i-2])
+# plt.plot(X,Y,marker='o',label='xyz')
+# plt.show()
+
+# sample = content_sizes_count_list
+# ecdf = sm.distributions.ECDF(sample)
+
+# x = np.linspace(min(sample), max(sample))
+# y = ecdf(x)
+# plt.yscale('log',nonposy='clip')
+# plt.step(x, y)
+# plt.show()
+
+# bins=[0,100000,200000,300000,400000,500000,600000,700000,800000,900000,1000000,1100000,1200000,1300000,1400000,1500000,1600000]
+# # sorted_data = np.sort(content_sizes_count_list)
+# # max_val=log10(sorted_data.max())
+# # min_val=log10(sorted_data.min())
+# #logspace = np.logspace(content_sizes_count.min(), content_sizes_count.max(), 50)
+# plt.hist(content_sizes_count_list,bins,histtype='bar',rwidth=0.8)
+# plt.yscale('log',nonposy='clip')
+# plt.xlabel('X')
+# plt.ylabel('Y')
+# plt.title('content size')
+# plt.show()
+
+# sorted_data = np.sort(content_sizes_count_list)
+# max_val=log10(sorted_data.max())
+# min_val=log10(sorted_data.min())
+
+# logspace = np.logspace(min_val, max_val, 0.5)
+# plt.hist(content_sizes_count_list,bins=logspace,histtype='step')
+# plt.show()
+
+
+#=================================================================
+#Response code
+# response_code=access_logs.map(lambda log: log.response_code).cache()
+# labels=list()
+# fracs=list()
+# responseCode=access_logs.map(lambda log: log.response_code)
+# responseCodeToCount = (access_logs
+#                        .map(lambda log: (log.response_code, 1))
+#                        .reduceByKey(lambda a, b : a + b)
+#                        .cache())
+# #responseCodeToCountList = responseCodeToCount.take(100)
+# #print 'Found %d response codes' % len(responseCodeToCountList)
+# #print 'Response Code Counts: %s' % responseCodeToCountList
+
+# for item in responseCodeToCountList:
+#     labels.append(item[0])
+#     value=float(item[1])/access_logs.count()
+#     fracs.append(value)
+# print "labels",labels
+# print "Number_Res_code",fracs
+
+# rcParams['figure.figsize'] = 18, 7
+# rcParams['font.size'] = 8
+
+# N = len(fracs)
+
+# ind = range(N)
+
+# fig = plt.figure()
+
+# ax = fig.add_subplot(111)
+# ax.bar(ind,fracs,log='true',align='center')
+
+# ax.set_ylabel('Percentage of web objects -- >',fontsize=14)
+# ax.set_xlabel('Response codes -->',fontsize=14)
+
+# ax.set_title('Response code graph for Alexa top 1 milion websites'+"\n",fontsize=18)               
+
+# ax.set_xticks(ind)
+# ax.set_xticklabels(labels)
+# ax.grid()                                      
+
+# fig.autofmt_xdate(bottom=0.2, rotation=90, ha='left')
+
+# plt.yscale('log')
+# #Uncomment the line for plotting bars in graph
+# #plt.yscale('log',nonposy='clip')
+# plt.show()
+
+#End of Response code
+#============================================================================================
+#Start of Type of script
+# urlRDD=access_logs.map(lambda log: log.url).cache()
+# urlwithScriptRDD=urlRDD.filter(lambda value:'.php' in value or '.jsp' in value or '.aspx' in value
+#                                 or '.perl' in value or '.css' in value or '.rb' in value
+#                                    or '.py' in value)
+# urlWithphplist=urlRDD.filter(lambda value:'.php' in value).collect()
+# urlWithjavalist=urlRDD.filter(lambda value:'.jsp' in value).collect()
+# urlWithasplist=urlRDD.filter(lambda value:'.aspx' in value).collect()
+# urlWithperllist=urlRDD.filter(lambda value:'.perl' in value).collect()
+# urlWithcsslist=urlRDD.filter(lambda value:'.css' in value).collect()
+# urlWithrubylist=urlRDD.filter(lambda value:'.rb' in value).collect()
+# urlWithpythonlist=urlRDD.filter(lambda value:'.py' in value).collect()
+
+# labels=('PHP','JAVA','ASP','PERL','CSS','RUBY','PYTHON')
+# fracs=list()
+# valuephp=float(len(urlWithphplist))/urlwithScriptRDD.count()
+# valuejava=float(len(urlWithjavalist))/urlwithScriptRDD.count()
+# valueasp=float(len(urlWithasplist))/urlwithScriptRDD.count()
+# valueperl=float(len(urlWithperllist))/urlwithScriptRDD.count()
+# valuecss=float(len(urlWithcsslist))/urlwithScriptRDD.count()
+# valueruby=float(len(urlWithrubylist))/urlwithScriptRDD.count()
+# valuepython=float(len(urlWithpythonlist))/urlwithScriptRDD.count()
+# fracs.append(valuephp)
+# fracs.append(valuejava)
+# fracs.append(valueasp)
+# fracs.append(valueperl)
+# fracs.append(valuecss)
+# fracs.append(valueruby)
+# fracs.append(valuepython)
+
+# xlabel('Percentage--->',color='black',fontsize=24)
+# ylabel('Server side languages--->',color='black',fontsize=24)
+# title('Usage of server-side programming languages for Alexa Top 100 websites'+"\n",fontsize=30)
+# width=0.5
+# pos=arange(len(labels))+0.5
+# barh(pos,fracs,align='center',color='green')
+# yticks(pos,labels)
+# show()
+
+#End of Type of Script
+#=============================================================================================
+# xlabel('occurances of objects--->',color='black',fontsize=24)
+# ylabel('Hosts--->',color='black',fontsize=24)
+# title('Top 25 Hosts with highest object Occurances for Alexa Top 100 websites'+"\n",fontsize=30)
+# width=0.5
+# pos=arange(len(labels))+.5
+# barh(pos,fracs,align='center',color='green')
+# yticks(pos,labels)
+# plt.autoscale(enable=True, axis='y', tight=None)
+# grid(True)
+# show()
+
+# Any hosts that has accessed the server more than 10 times.
+# hostCountPairTuple = access_logs.map(lambda log: (log.host, 1))
+
+# hostSum = hostCountPairTuple.reduceByKey(lambda a, b : a + b)
+
+# hostMoreThan10 = hostSum.filter(lambda s: s[1] > 10)
+
+# hostsPick20 = (hostMoreThan10
+#                .map(lambda s: s[0])
+#                .take(20))
+
+# print 'Any 20 hosts that have accessed more then 10 times: %s' % hostsPick20
