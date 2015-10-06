@@ -65,7 +65,9 @@ IndexNotInResultFile=list()
 
 listOfLists=[[] for _ in range(listrange)]
 OutputFile = codecs.open("output6.csv",'wbr+')
+urllistFile=codecs.open("urllistFile.csv",'wbr+')
 wr = csv.writer(OutputFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+urllistFileWriter= csv.writer(urllistFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
 
 with open('top-1m.csv') as csvfile:
     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|') 
@@ -184,11 +186,15 @@ def multiProc_crawler(domainlist,nprocs):
     out_q = Queue.Queue()
     finalresult=[]
     procs = []
+
     for i in xrange(nprocs):
-        p = mp.Process(target=worker,
-                args=(domainlist[i],out_q,i))
-        procs.append(p)
-        p.start()
+        chunks=[domainlist[i][x:x+nprocs] for x in xrange(0, len(domainlist[i]), nprocs)]
+        for j in xrange(len(chunks)):
+            urllistFileWriter.writerow(chunks[j])
+            p = mp.Process(target=worker,
+                    args=(chunks[j],out_q,i))
+            procs.append(p)
+            p.start()
 
     for job in procs:
         job.join()
@@ -210,6 +216,7 @@ def multiProc_crawler(domainlist,nprocs):
     
 #[Som] :These lines can be used later for multiprocessing
 resultlist=[]
+urllistFileWriter.writerow(listOfLists)
 multiProc_crawler(listOfLists,listrange)
 logFile = open("output6.csv",'r')
 logwr = csv.reader(logFile,skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
@@ -228,7 +235,7 @@ for item in IndexNotInResultFile:
     UrlNotInResultFile.append(get_key_from_value(urlIndexlist,item))
 listrangeNew=1
 listOfListsNew=[]
-print "UrlNotInResultFile",UrlNotInResultFile
+urllistFileWriter.writerow(UrlNotInResultFile)
 listOfListsNew.append(UrlNotInResultFile)
 if len(UrlNotInResultFile) >10 :
     multiProc_crawler(listOfListsNew,10)
