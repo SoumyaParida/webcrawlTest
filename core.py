@@ -59,15 +59,15 @@ urlIndexlist=dict()
 
 row_no=1
 code_chunk=1
-listrange=5
+listrange=500
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 
 listOfLists=[[] for _ in range(listrange)]
 OutputFile = codecs.open("output6.csv",'wbr+')
-urllistFile=codecs.open("urllistFile.csv",'wbr+')
+urllistFile=open("urllistFile.txt",'wbr+')
 wr = csv.writer(OutputFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-urllistFileWriter= csv.writer(urllistFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+#urllistFileWriter= csv.writer(urllistFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
 
 with open('top-1m.csv') as csvfile:
     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|') 
@@ -90,7 +90,7 @@ Function : setup_crawler
 This function can be used to create multiple spiders
 inside single process"""
 
-def worker(urllist,out_q,i):
+def worker(urllist,out_q):
     cmdline.execute([
     'scrapy', 'crawl', 'alexa',
     '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist)])
@@ -186,17 +186,25 @@ def multiProc_crawler(domainlist,nprocs):
     out_q = Queue.Queue()
     finalresult=[]
     procs = []
+    # for i in xrange(nprocs):           
+    #     p = mp.Process(target=worker,
+    #             args=(domainlist[i],out_q,i))
+    #     procs.append(p)
+    #     p.start()
 
-    for i in xrange(nprocs):
-        chunks=[domainlist[i][x:x+nprocs] for x in xrange(0, len(domainlist[i]), nprocs)]
-        for j in xrange(len(chunks)):
-            urllistFileWriter.writerow(chunks[j])
-            p = mp.Process(target=worker,
-                    args=(chunks[j],out_q,i))
-            procs.append(p)
-            p.start()
-
+    # for i in xrange(nprocs):
+    chunks=[domainlist[x:x+nprocs] for x in xrange(0, len(domainlist), nprocs)]
+    print "===================================="
+    print "range=",len(chunks)
+    for j in xrange(len(chunks)):
+        urllistFile.write("\n"+",".join(chunks[j]))
+        # urllistFile.write(chunks[j])
+        p = mp.Process(target=worker,
+                args=(chunks[j],out_q))
+        procs.append(p)
+        p.start()
     for job in procs:
+        urllistFile.write("Done"+",".join(chunks[j]))
         job.join()
 
 
@@ -216,8 +224,10 @@ def multiProc_crawler(domainlist,nprocs):
     
 #[Som] :These lines can be used later for multiprocessing
 resultlist=[]
-urllistFileWriter.writerow(listOfLists)
-multiProc_crawler(listOfLists,listrange)
+
+for item in listOfLists:
+    urllistFile.write(",".join(item))
+    multiProc_crawler(item,listrange)
 logFile = open("output6.csv",'r')
 logwr = csv.reader(logFile,skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
 wordcount=list()
@@ -242,3 +252,4 @@ if len(UrlNotInResultFile) >10 :
 else :
     multiProc_crawler(listOfListsNew,1)
 logFile.close()
+urllistFile.close()
