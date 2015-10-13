@@ -1,6 +1,6 @@
 import re
 import datetime
-
+from urlparse import urlparse
 from pyspark.sql import Row
 import sys
 import os
@@ -107,7 +107,7 @@ sc=SparkContext("local", "pyspark_output.py")
 
 def parseLogs():
     """ Read and parse log file """
-    parsed_logs = (sc.textFile(logFile).map(parseApacheLogLine).cache())
+    parsed_logs = (sc.textFile(logFile,use_unicode=False).map(parseApacheLogLine).cache())
 
     access_logs = (parsed_logs
                    .filter(lambda s: s[1] == 1)
@@ -202,6 +202,7 @@ parsed_logs, access_logs, failed_logs = parseLogs()
 
 #=================================================================
 #Response code
+#=================================================================
 # response_code=access_logs.map(lambda log: log.response_code).cache()
 # labels=list()
 # fracs=list()
@@ -252,6 +253,7 @@ parsed_logs, access_logs, failed_logs = parseLogs()
 #End of Response code
 #============================================================================================
 #Start of Type of script
+#============================================================================================
 # urlRDD=access_logs.map(lambda log: log.url).cache()
 # urlwithScriptRDD=urlRDD.filter(lambda value:'.php' in value or '.jsp' in value or '.aspx' in value
 #                                 or '.perl' in value or '.css' in value or '.rb' in value
@@ -283,7 +285,7 @@ parsed_logs, access_logs, failed_logs = parseLogs()
 
 # xlabel('Percentage--->',color='black',fontsize=24)
 # ylabel('Server side languages--->',color='black',fontsize=24)
-# title('Usage of server-side programming languages for Alexa Top 100 websites'+"\n",fontsize=30)
+# title('Usage of server-side programming languages for Alexa Top 1 milion websites'+"\n",fontsize=30)
 # width=0.5
 # pos=arange(len(labels))+0.5
 # barh(pos,fracs,align='center',color='green')
@@ -292,6 +294,149 @@ parsed_logs, access_logs, failed_logs = parseLogs()
 
 #End of Type of Script
 #=============================================================================================
+#start of cookies
+#=============================================================================================
+# cookiesRDD=access_logs.map(lambda log:(log.url,log.cookies)).cache()
+# cookieswithUrlRDDList=cookiesRDD.collect()
+# urls=list()
+# def getsecondleveldomain(url):
+#     with open("/home/soumya/Documents/thesis/scrapy_thes/webcrawlTest/trunk/effective_tld_names.dat") as tld_file:
+#         tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
+#     print "urlelements",url
+#     url_elements = urlparse(url)[1].split('.')
+#     print "url_elements",urlparse(url)[1]
+#     for i in range(-len(url_elements), 0):
+#         last_i_elements = url_elements[i:]
+#         candidate = ".".join(last_i_elements) # abcde.co.uk, co.uk, uk
+#         wildcard_candidate = ".".join(["*"] + last_i_elements[1:]) # *.co.uk, *.uk, *
+#         exception_candidate = "!" + candidate
+#         # match tlds: 
+#         if (exception_candidate in tlds):
+#             print "url_elements[i:]",url_elements[i:]
+#             return ".".join(url_elements[i:]) 
+#         if (candidate in tlds or wildcard_candidate in tlds):
+#             print "url_elements[i-1:]",url_elements[i-1:]
+#             return ".".join(url_elements[i-1:])
+# first_party_cookie=list()
+# third_party_cookie=list()
+
+# for item in cookieswithUrlRDDList:
+#     urlValue=str(item[0])
+#     url=getsecondleveldomain(urlValue)
+#     value=item[1]
+#     if item[1] is not None and url is not None:
+#         if url in item[1]:
+#             first_party_cookie.append(url)
+#         else:
+#             if '.com' in value and url not in value:
+#                 third_party_cookie.append(url)
+# print "first",len(first_party_cookie)
+# print "third",len(third_party_cookie)
+
+#End of cookies
+#============================================================================================
+#Type of Link
+#=============================================================================================
+# objectTypeRDD=access_logs.map(lambda log: log.objecttype).cache()
+# objectTypeProperRDD=objectTypeRDD.filter(lambda value:'A' in value or 'S' in value or 'L' in value or 'E' in value)
+# objectTypeofAnchorRDD=objectTypeProperRDD.filter(lambda value:'A' in value).collect()
+# objectTypeofScriptRDD=objectTypeProperRDD.filter(lambda value:'S' in value).collect()
+# objectTypeofLinkRDD=objectTypeProperRDD.filter(lambda value:'L' in value).collect()
+# objectTypeofEmbededRDD=objectTypeProperRDD.filter(lambda value:'E' in value).collect()
+
+# labels=('Anchor','Script','Links','Embeded')
+# fracs=list()
+# valueAnchor=float(len(objectTypeofAnchorRDD))/objectTypeProperRDD.count()
+# valueScript=float(len(objectTypeofScriptRDD))/objectTypeProperRDD.count()
+# valueLink=float(len(objectTypeofLinkRDD))/objectTypeProperRDD.count()
+# valueEmbeded=float(len(objectTypeofEmbededRDD))/objectTypeProperRDD.count()
+
+# fracs.append(valueAnchor)
+# fracs.append(valueScript)
+# fracs.append(valueLink)
+# fracs.append(valueEmbeded)
+
+# xlabel('Percentage--->',color='black',fontsize=24)
+# ylabel('Object Type--->',color='black',fontsize=24)
+# title('Usage of different Object type for Alexa Top 1m websites'+"\n",fontsize=30)
+# width=0.1
+# pos=arange(len(labels))+0.1
+# barh(pos,fracs,align='center',color='green')
+# yticks(pos,labels)
+# show()
+#End of objectType
+#============================================================================================
+#Type of Host
+#=============================================================================================
+#def changeString():
+hostRDD=access_logs.map(lambda log:(log.unique_id,log.host)).cache()
+hostProperRDD=hostRDD.map(lambda (id,host):(id,host.split(';')))
+hostwithoutNullRDD=hostProperRDD.filter(lambda (x,y):'-' not in y)
+def f(x): return x
+allHostsRDD=hostwithoutNullRDD.flatMapValues(f).cache()
+def getsecondleveldomain(url):
+    with open("/home/soumya/Documents/thesis/scrapy_thes/webcrawlTest/trunk/effective_tld_names.dat") as tld_file:
+        tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
+    url_elements = urlparse(url)[1].split('.')
+    for i in range(-len(url_elements), 0):
+        last_i_elements = url_elements[i:]
+        candidate = ".".join(last_i_elements) # abcde.co.uk, co.uk, uk
+        wildcard_candidate = ".".join(["*"] + last_i_elements[1:]) # *.co.uk, *.uk, *
+        exception_candidate = "!" + candidate
+        # match tlds: 
+        if (exception_candidate in tlds):
+            return url_elements[i:][0]
+        if (candidate in tlds or wildcard_candidate in tlds):
+            return url_elements[i-1:][0]
+def getsecondleveldomainValue(value):
+    domain=value[1]
+    if domain.startswith('www.'):
+        domain = domain.replace("www","")
+    if domain.endswith('.'):
+        domain=domain[:-1]
+
+    if not domain.startswith('http://'):
+        domain = 'http://%s' % domain
+    secondlevelurl=str(getsecondleveldomain(domain))
+    return (value[0],secondlevelurl)
+allHostswithSecondlevelDomainRDD=allHostsRDD.map(getsecondleveldomainValue)
+allhostwithUniquehost=allHostswithSecondlevelDomainRDD.map(lambda (x,y):(y,x))
+allhostwithUniqueID=allhostwithUniquehost.groupByKey().cache()
+HostCount = allhostwithUniqueID.map(lambda (x,y):(x,len(y))).cache()
+HostCountSorted = HostCount.top(10, lambda s: s[1])
+print 'Top five Hosts: %s' % HostCountSorted
+HostCountRDD = allhostwithUniquehost.groupByKey().mapValues(lambda x: set(x))
+UniqueHostCount = HostCountRDD.map(lambda (x,y):(x,len(y))).cache()
+UniqueHostCountSorted = UniqueHostCount.top(10, lambda s: s[1])
+print 'Top five Hosts: %s' % UniqueHostCountSorted
+#End of objectType
+#============================================================================================
+
+#print allHostswithSecondlevelDomainRDD.take(3)
+# # hostwithoutNullRDD=hostProperRDD.filter(lambda (id,host):id is str(816421))
+# hostProperRDDstring=hossecondlevelurl !=None:tProperRDD.filter(lambda (id,host): (id ,lambda host :str(host)))
+# #hostwithoutNullRDD=hostProperRDDstring.filter(lambda (id,host):(id,'-' not in host))
+# hostwithoutNullRDD=hostProperRDDstring.filter(lambda x:'-' not in x)
+# # hostUniqueRDD=hostwithoutNullRDD.UniqueHostCountmap(lambda (x,y) : (x,value for value in y)
+# print hostProperRDDstring.take(2)
+# print hostwithoutNullRDD.take(2)
+# def is_error(id,host):
+#     if '-' not in host:
+#         unique_id=id
+#         urllist=urllist.append(host)
+#         for value in urllist:
+#             return (unique_id,value)
+# hostProperRDDfilterhypen=hostProperRDD.filter(is_error)
+# print hostProperRDDfilterhypen.take(2)
+
+# hostRDD=access_logs.map(lambda log:(log.host,log.unique_id)).cache()
+# GroupedHosts = hostRDD.groupByKey().mapValues(lambda x: set(x))
+# # hostProperRDD=hostRDD.filter(lambda (id,host):(id,'-' not in host))
+# GroupedHostsList=GroupedHosts.takeOrdered(10,lambda s: -1 * s)
+# print len(GroupedHostsList[0])
+
+
+
 # xlabel('occurances of objects--->',color='black',fontsize=24)
 # ylabel('Hosts--->',color='black',fontsize=24)
 # title('Top 25 Hosts with highest object Occurances for Alexa Top 100 websites'+"\n",fontsize=30)
