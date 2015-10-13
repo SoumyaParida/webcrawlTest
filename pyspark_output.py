@@ -369,46 +369,60 @@ parsed_logs, access_logs, failed_logs = parseLogs()
 #Type of Host
 #=============================================================================================
 #def changeString():
-hostRDD=access_logs.map(lambda log:(log.unique_id,log.host)).cache()
-hostProperRDD=hostRDD.map(lambda (id,host):(id,host.split(';')))
-hostwithoutNullRDD=hostProperRDD.filter(lambda (x,y):'-' not in y)
-def f(x): return x
-allHostsRDD=hostwithoutNullRDD.flatMapValues(f).cache()
-def getsecondleveldomain(url):
-    with open("/home/soumya/Documents/thesis/scrapy_thes/webcrawlTest/trunk/effective_tld_names.dat") as tld_file:
-        tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
-    url_elements = urlparse(url)[1].split('.')
-    for i in range(-len(url_elements), 0):
-        last_i_elements = url_elements[i:]
-        candidate = ".".join(last_i_elements) # abcde.co.uk, co.uk, uk
-        wildcard_candidate = ".".join(["*"] + last_i_elements[1:]) # *.co.uk, *.uk, *
-        exception_candidate = "!" + candidate
-        # match tlds: 
-        if (exception_candidate in tlds):
-            return url_elements[i:][0]
-        if (candidate in tlds or wildcard_candidate in tlds):
-            return url_elements[i-1:][0]
-def getsecondleveldomainValue(value):
-    domain=value[1]
-    if domain.startswith('www.'):
-        domain = domain.replace("www","")
-    if domain.endswith('.'):
-        domain=domain[:-1]
+# hostRDD=access_logs.map(lambda log:(log.unique_id,log.host)).cache()
+# hostProperRDD=hostRDD.map(lambda (id,host):(id,host.split(';')))
+# hostwithoutNullRDD=hostProperRDD.filter(lambda (x,y):'-' not in y)
+# def f(x): return x
+# allHostsRDD=hostwithoutNullRDD.flatMapValues(f).cache()
+# def getsecondleveldomain(url):
+#     with open("/home/soumya/Documents/thesis/scrapy_thes/webcrawlTest/trunk/effective_tld_names.dat") as tld_file:
+#         tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
+#     url_elements = urlparse(url)[1].split('.')
+#     for i in range(-len(url_elements), 0):
+#         last_i_elements = url_elements[i:]
+#         candidate = ".".join(last_i_elements) # abcde.co.uk, co.uk, uk
+#         wildcard_candidate = ".".join(["*"] + last_i_elements[1:]) # *.co.uk, *.uk, *
+#         exception_candidate = "!" + candidate
+#         # match tlds: 
+#         if (exception_candidate in tlds):
+#             return url_elements[i:][0]
+#         if (candidate in tlds or wildcard_candidate in tlds):
+#             return url_elements[i-1:][0]
+# def getsecondleveldomainValue(value):
+#     domain=value[1]
+#     if domain.startswith('www.'):
+#         domain = domain.replace("www","")
+#     if domain.endswith('.'):
+#         domain=domain[:-1]
 
-    if not domain.startswith('http://'):
-        domain = 'http://%s' % domain
-    secondlevelurl=str(getsecondleveldomain(domain))
-    return (value[0],secondlevelurl)
-allHostswithSecondlevelDomainRDD=allHostsRDD.map(getsecondleveldomainValue)
-allhostwithUniquehost=allHostswithSecondlevelDomainRDD.map(lambda (x,y):(y,x))
-allhostwithUniqueID=allhostwithUniquehost.groupByKey().cache()
-HostCount = allhostwithUniqueID.map(lambda (x,y):(x,len(y))).cache()
-HostCountSorted = HostCount.top(10, lambda s: s[1])
-print 'Top five Hosts: %s' % HostCountSorted
-HostCountRDD = allhostwithUniquehost.groupByKey().mapValues(lambda x: set(x))
-UniqueHostCount = HostCountRDD.map(lambda (x,y):(x,len(y))).cache()
-UniqueHostCountSorted = UniqueHostCount.top(10, lambda s: s[1])
-print 'Top five Hosts: %s' % UniqueHostCountSorted
+#     if not domain.startswith('http://'):
+#         domain = 'http://%s' % domain
+#     secondlevelurl=str(getsecondleveldomain(domain))
+#     return (value[0],secondlevelurl)
+# allHostswithSecondlevelDomainRDD=allHostsRDD.map(getsecondleveldomainValue)
+# allhostwithUniquehost=allHostswithSecondlevelDomainRDD.map(lambda (x,y):(y,x))
+# allhostwithUniqueID=allhostwithUniquehost.groupByKey().cache()
+# HostCount = allhostwithUniqueID.map(lambda (x,y):(x,len(y))).cache()
+# HostCountSorted = HostCount.top(10, lambda s: s[1])
+# print 'Top five Hosts: %s' % HostCountSorted
+# HostCountRDD = allhostwithUniquehost.groupByKey().mapValues(lambda x: set(x))
+# UniqueHostCount = HostCountRDD.map(lambda (x,y):(x,len(y))).cache()
+# UniqueHostCountSorted = UniqueHostCount.top(10, lambda s: s[1])
+# print 'Top five Hosts: %s' % UniqueHostCountSorted
+#End of objectType
+#============================================================================================
+#Number of hits by IP address
+#=============================================================================================
+IPAddressRDD=access_logs.map(lambda log:(1,log.ip_address)).cache()
+IPAddressRDD=IPAddressRDD.map(lambda (count,ipaddress):(count,ipaddress.split(';')))
+IPAddresswithoutNullRDD=IPAddressRDD.filter(lambda (x,y):'-' not in y)
+def f(x): return x
+allIPAddressRDD=IPAddresswithoutNullRDD.flatMapValues(f).cache()
+allIPAddressCountRDD=allIPAddressRDD.map(lambda (x,y):(y,x))
+allIPAddressSum = allIPAddressCountRDD.reduceByKey(lambda x,y :x+y)
+allIPAddressTop25 = allIPAddressSum.top(25, lambda s: s[1])
+print 'Top 25 hosts that generated errors: %s' % allIPAddressTop25
+
 #End of objectType
 #============================================================================================
 
