@@ -59,7 +59,7 @@ urlIndexlist=dict()
 
 row_no=1
 code_chunk=1
-listrange=500
+listrange=100
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 
@@ -194,8 +194,6 @@ def multiProc_crawler(domainlist,nprocs):
 
     # for i in xrange(nprocs):
     chunks=[domainlist[x:x+nprocs] for x in xrange(0, len(domainlist), nprocs)]
-    print "===================================="
-    print "range=",len(chunks)
     for j in xrange(len(chunks)):
         urllistFile.write("\n"+",".join(chunks[j]))
         # urllistFile.write(chunks[j])
