@@ -59,7 +59,7 @@ urlIndexlist=dict()
 
 row_no=1
 code_chunk=1
-listrange=100
+listrange=20
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 
@@ -186,23 +186,21 @@ def multiProc_crawler(domainlist,nprocs):
     out_q = Queue.Queue()
     finalresult=[]
     procs = []
-    # for i in xrange(nprocs):           
-    #     p = mp.Process(target=worker,
-    #             args=(domainlist[i],out_q,i))
-    #     procs.append(p)
-    #     p.start()
-
-    # for i in xrange(nprocs):
-    chunks=[domainlist[x:x+nprocs] for x in xrange(0, len(domainlist), nprocs)]
-    for j in xrange(len(chunks)):
-        urllistFile.write("\n"+",".join(chunks[j]))
-        # urllistFile.write(chunks[j])
+    for i in xrange(nprocs):           
         p = mp.Process(target=worker,
-                args=(chunks[j],out_q))
+                args=(domainlist[i],out_q))
         procs.append(p)
         p.start()
+
+    # for i in xrange(nprocs):
+    # chunks=[domainlist[x:x+nprocs] for x in xrange(0, len(domainlist), nprocs)]
+    # for j in xrange(len(chunks)):
+    #     urllistFile.write("\n"+",".join(chunks[j]))
+    #     p = mp.Process(target=worker,
+    #             args=(chunks[j],out_q))
+    #     procs.append(p)
+    #     p.start()
     for job in procs:
-        urllistFile.write("Done"+",".join(chunks[j]))
         job.join()
 
 
@@ -222,10 +220,10 @@ def multiProc_crawler(domainlist,nprocs):
     
 #[Som] :These lines can be used later for multiprocessing
 resultlist=[]
-
-for item in listOfLists:
-    urllistFile.write(",".join(item))
-    multiProc_crawler(item,listrange)
+multiProc_crawler(listOfLists,listrange)
+# for item in listOfLists:
+#     urllistFile.write(",".join(item))
+#     multiProc_crawler(item,listrange)
 logFile = open("output6.csv",'r')
 logwr = csv.reader(logFile,skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
 wordcount=list()
@@ -243,11 +241,21 @@ for item in IndexNotInResultFile:
     UrlNotInResultFile.append(get_key_from_value(urlIndexlist,item))
 listrangeNew=1
 listOfListsNew=[]
-urllistFileWriter.writerow(UrlNotInResultFile)
+for item in UrlNotInResultFile:
+    urllistFile.write(item)
+# urllistFileWriter.writerow(UrlNotInResultFile)
 listOfListsNew.append(UrlNotInResultFile)
-if len(UrlNotInResultFile) >10 :
-    multiProc_crawler(listOfListsNew,10)
+if len(UrlNotInResultFile) >20 :
+    multiProc_crawler(listOfListsNew,20)
 else :
     multiProc_crawler(listOfListsNew,1)
+for line in logwr:
+    if line[0] not in wordcount:
+        wordcount.append(line[0])
+IndexNotInResultFile=list(set(IndexInTop1mFile) - set(wordcount))
+for item in IndexNotInResultFile:
+    UrlNotInResultFile.append(get_key_from_value(urlIndexlist,item))
+for item in UrlNotInResultFile:
+    urllistFile.write(item)
 logFile.close()
 urllistFile.close()
