@@ -22,6 +22,8 @@ from scrapy import cmdline
 from scrapy import log
 import codecs
 import sys
+import re
+import fileinput, sys, csv
 
 
 class Counter(object):
@@ -59,7 +61,7 @@ urlIndexlist=dict()
 
 row_no=1
 code_chunk=1
-listrange=20
+listrange=40
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 
@@ -90,10 +92,21 @@ Function : setup_crawler
 This function can be used to create multiple spiders
 inside single process"""
 
-def worker(urllist,out_q):
+def worker(urllist,out_q,i):
     cmdline.execute([
     'scrapy', 'crawl', 'alexa',
     '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist)])
+    # rowID=set()
+    # indexMissed=list()
+    # for row in 'item'+str(i):
+    #     rowID.append(row['index'])
+    #     indexMissed=list(set(urlIndexlist)-set(rowID))
+    # urllistFile.write(indexMissed)
+    # for item in indexMissed:
+    #     Urlmixed.append(get_key_from_value(urlIndexlist,item))
+    # cmdline.execute([
+    # 'scrapy', 'crawl', 'alexa',
+    # '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist)])
     return
 
 # def worker(urllist,out_q,i):
@@ -188,7 +201,7 @@ def multiProc_crawler(domainlist,nprocs):
     procs = []
     for i in xrange(nprocs):           
         p = mp.Process(target=worker,
-                args=(domainlist[i],out_q))
+                args=(domainlist[i],out_q,i))
         procs.append(p)
         p.start()
 
@@ -224,13 +237,29 @@ multiProc_crawler(listOfLists,listrange)
 # for item in listOfLists:
 #     urllistFile.write(",".join(item))
 #     multiProc_crawler(item,listrange)
-logFile = open("output6.csv",'r')
-logwr = csv.reader(logFile,skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+#logFile = fileinput.input("output6.csv",inplace=True)
+#logwr = csv.reader(logFile,skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL,dialect=csv.excel_tab)
+#logwriter = csv.writer(sys.stdout) 
+#APACHE_ACCESS_LOG_PATTERN = '(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(^(2[0-3]|[01]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9]).(\d{6})$)(\t)(^(2[0-3]|[01]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9]).(\d{6})$)'
+APACHE_ACCESS_LOG_PATTERN ='(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})'
 wordcount=list()
 UrlNotInResultFile=list()
+i = 0
+logwr = open("output6.csv").readlines()
 for line in logwr:
-    if line[0] not in wordcount:
-        wordcount.append(line[0])
+    match = re.search(APACHE_ACCESS_LOG_PATTERN, line)
+    if match is None:
+        logwr.pop(i)
+    i=i+1
+open("output.csv", "w").write("".join(logwr))
+
+logFile = codecs.open("output.csv",'rU')
+IndexNotInResultFile=list()
+wordcount=set()
+UrlNotInResultFile=list()
+outputReader = csv.reader(logFile,skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL,dialect=csv.excel_tab)
+for line in outputReader:
+        wordcount.add(line[0])
 IndexNotInResultFile=list(set(IndexInTop1mFile) - set(wordcount))
 def get_key_from_value(my_dict, v):
     for key,value in my_dict.items():
@@ -243,19 +272,28 @@ listrangeNew=1
 listOfListsNew=[]
 for item in UrlNotInResultFile:
     urllistFile.write(item)
+    urllistFile.write("\n")
 # urllistFileWriter.writerow(UrlNotInResultFile)
 listOfListsNew.append(UrlNotInResultFile)
+multiProc_crawler(listOfListsNew,20)
 if len(UrlNotInResultFile) >20 :
     multiProc_crawler(listOfListsNew,20)
 else :
-    multiProc_crawler(listOfListsNew,1)
-for line in logwr:
-    if line[0] not in wordcount:
-        wordcount.append(line[0])
-IndexNotInResultFile=list(set(IndexInTop1mFile) - set(wordcount))
-for item in IndexNotInResultFile:
-    UrlNotInResultFile.append(get_key_from_value(urlIndexlist,item))
-for item in UrlNotInResultFile:
-    urllistFile.write(item)
+    multiProc_crawler(listOfListsNew,10)
+#APACHE_ACCESS_LOG_PATTERN = '(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(^(2[0-3]|[01]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9]).(\d{6})$)(\t)(^(2[0-3]|[01]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9]).(\d{6})$)'
+# for line in logwr:
+#     match = re.search(APACHE_ACCESS_LOG_PATTERN, line)
+#     if match is None:
+#         logwriter.writerow(row)
+# for line in logwr:
+#     if line[0] not in wordcount:
+#         wordcount.append(line[0])
+# IndexNotInResultFile=list(set(IndexInTop1mFile) - set(wordcount))
+# for item in IndexNotInResultFile:
+#     UrlNotInResultFile.append(get_key_from_value(urlIndexlist,item))
+# for item in UrlNotInResultFile:
+#     urllistFile.write(item)
+#     urllistFile.write("mama")
+#     urllistFile.write("\n")
 logFile.close()
 urllistFile.close()
