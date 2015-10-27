@@ -34,6 +34,10 @@ class Page(Item):
     InternalembededCount=Field()
     UniqueExternalSitesForEmbeded=Field()
 
+    ExternalAnchorCount=Field()
+    InternalAnchorCount=Field()
+    UniqueExternalSitesForAnchor=Field()
+
     # UniqueExternalSites=Field()
     # ExternalSites=Field()
     # secondlevelurl=Field()
