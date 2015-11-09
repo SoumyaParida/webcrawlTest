@@ -18,6 +18,7 @@ from datetime import datetime
 import pygeoip
 import Queue
 from scrapy.contrib.linkextractors.lxmlhtml import LxmlLinkExtractor
+from scrapy.http.cookies import CookieJar
 import ast
 
 #from scrapy.stats import stats
@@ -71,6 +72,7 @@ class alexaSpider(Spider):
     def start_requests(self):
         self.link_extractor = sle()
         self.cookies_seen = set()
+        i=0
         for url in resulturldict:
             indexUnique=resulturldict.get(url)
             yield Request(url, meta={'counter': indexUnique},method='GET',callback=self.parse,dont_filter=True)
@@ -543,16 +545,12 @@ class alexaSpider(Spider):
     any website.
     """
     #@profile
-    def _set_new_cookies(self, page, response):
+    def _set_new_cookies(self, page, response): 
         cookies = []
         for cookie in [x.split(';', 1)[0] for x in response.headers.getlist('Set-Cookie')]:
             if cookie not in self.cookies_seen:
                 self.cookies_seen.add(cookie)
                 cookies.append(cookie.replace(" [",""))
-        # cookie=response.headers.getlist('Set-Cookie')
-        # for cookieValue in cookie:
-        #     cookies.append(cookieValue.strip())
-        #     cookies.append('|')
         if cookies:
             page['newcookies'] = cookies
         else:
@@ -564,7 +562,7 @@ class alexaSpider(Spider):
     #@profile
     def _set_DNS_info(self, page,response):
         # start_time = time.clock()
-        CNAMEList=[]
+        CNAMEList=set()
         # dest_server_ip=[]
         # dest_ASN=[]
         dest_server_ip[:] = []
@@ -592,11 +590,11 @@ class alexaSpider(Spider):
             #page['destIP']='1'
             for rdata in answers:
                 try:
-                    CNAMEList.append(str(rdata))
+                    CNAMEList.add(str(rdata))
                     while (rdata.target):
                         value=dns.resolver.query(rdata.target, 'CNAME')
                         for rdata in value:
-                            CNAMEList.append(str(rdata))
+                            CNAMEList.add(str(rdata))
                 except dns.resolver.NXDOMAIN:
                     continue
                 except dns.resolver.Timeout:
