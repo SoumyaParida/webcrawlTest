@@ -1,10 +1,16 @@
 import re
 import datetime
 from urlparse import urlparse
+from datetime import datetime
+from datetime import timedelta
+# import time
+from math import exp
 from pyspark.sql import Row
+from pyspark import SparkContext
 import sys
 import os
-from pyspark import SparkContext
+import csv
+
 
 import numpy as np
 import statsmodels.api as sm # recommended import according to the docs
@@ -46,20 +52,8 @@ def parseApacheLogLine(logline):
     else:
         size = long(match.group(7))
 
-    # print "unique_id=" ,match.group(1)
-    # print "    depth         =" , match.group(3)
-    # print "    response_code =" , int(match.group(5))
-    # print "    content_size  =" , size
-    # print "    url           =" , match.group(9)
-    # print "    cookies       =" , match.group(11)
-    # print "    objecttype    =" , match.group(13)
-    # print "    host          =" , match.group(15)
-    # print "    ip_address    =" , match.group(17)
-    # print "    asn_number    =" , match.group(19)
-    # print "    start_time    =" , parse_apache_time(match.group(21))
-    # print "    end_time      =" , parse_apache_time(match.group(23))
     return (Row(
-        unique_id     = int(match.group(1)),
+        unique_id     = match.group(1),
         depth         = match.group(3),
         response_code = int(match.group(5)),
         content_size  = size,
@@ -69,41 +63,34 @@ def parseApacheLogLine(logline):
         host          = match.group(15),
         ip_address    = match.group(17),
         asn_number    = match.group(19),
-        start_time    = match.group(21),
-        end_time      = match.group(23)
+        InternalAnchorCount = match.group(21),
+        ExternalAnchorCount = match.group(23),
+        UniqueExternalSitesForAnchor = match.group(25),
+        InternalImageCount=match.group(27),
+        ExternalImageCount=match.group(29),
+        UniqueExternalSitesForImage=match.group(31),
+        InternalscriptCount=match.group(33),
+        ExternalscriptCount=match.group(35),
+        UniqueExternalSitesForScript=match.group(37),
+        InternallinkCount=match.group(39),
+        ExternallinkCount=match.group(41),
+        UniqueExternalSitesForLink=match.group(43),
+        InternalembededCount=match.group(45),
+        ExternalembededCount=match.group(47),
+        UniqueExternalSitesForEmbeded=match.group(49),
+        start_time    = match.group(51),
+        end_time      = match.group(53)
     ), 1)
 
-# APACHE_ACCESS_LOG_PATTERN = '(\S+)  (\d{1}) (\d{3}) (\w+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)   (\S+)'
-
-APACHE_ACCESS_LOG_PATTERN = '(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)'
-
-
-
-# baseDir = os.path.join('data')
-# print baseDir
-# print dir
-# inputPath = os.path.join('cs100', 'lab2', 'apache.access.log.PROJECT')
-# print inputPath
-logFile = os.path.join('/home/soumya/Documents/courses/output1m.csv')
-# logFile = os.path.join('/home/soumya/Documents/thesis/webcrawlTest.git/webcrawlTest/trunk/test.csv')
+#APACHE_ACCESS_LOG_PATTERN = '(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(^(2[0-3]|[01]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9]).(\d{6})$)(\t)(^(2[0-3]|[01]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9]).(\d{6})$)'
+APACHE_ACCESS_LOG_PATTERN = '(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})'
+logFile = os.path.join('/home/soumya/Documents/results/5th_nov/output6_5th_nov.csv')
+# APACHE_ACCESS_LOG_PATTERN = '(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)'
+# logFile = os.path.join('/home/soumya/Documents/courses/output6.csv')
 print logFile
 
 
 sc=SparkContext("local", "pyspark_output.py")
-
-# Row(    unique_id     = match.group(1),
-#         depth         = match.group(2),
-#         response_code = int(match.group(3)),
-#         content_size  = size,
-#         url           = match.group(5),
-#         cookies       = match.group(6),
-#         objecttype    = match.group(7),
-#         host          = match.group(8),
-#         ip_address    = match.group(9),
-#         asn_number    = match.group(10),
-#         start_time    = parse_apache_time(match.group(11)),
-#         end_time      = parse_apache_time(match.group(12))
-#     )
 
 def parseLogs():
     """ Read and parse log file """
@@ -116,7 +103,7 @@ def parseLogs():
 
     failed_logs = (parsed_logs
                    .filter(lambda s: s[1] == 0)
-                   .map(lambda s: s[0]))
+                   .map(lambda s: s[0]).cache())
     failed_logs_count = failed_logs.count()
     print "failed",failed_logs_count
     if failed_logs_count > 0:
@@ -125,10 +112,18 @@ def parseLogs():
             print 'Invalid logline: %s' % line
 
     print 'Read %d lines, successfully parsed %d lines, failed to parse %d lines' % (parsed_logs.count(), access_logs.count(), failed_logs.count())
-    return parsed_logs, access_logs, failed_logs
+    #print 'Read %d lines, successfully parsed %d lines' % (parsed_logs.count(), access_logs.count())
+    return parsed_logs, access_logs,failed_logs
 
 
 parsed_logs, access_logs, failed_logs = parseLogs()
+#parsed_logs, access_logs= parseLogs()
+
+#=================================================================
+#sites Crawled from top 100,000 sites
+# unique_id=access_logs.map(lambda log: log.unique_id).cache()
+# unique_id_values=set(unique_id.collect())
+# print len(unique_id_values)
 
 #=================================================================
 #Content Size
@@ -141,6 +136,18 @@ parsed_logs, access_logs, failed_logs = parseLogs()
 #     content_sizes_count.min(),
 #     content_sizes_count.max())
 # content_sizes_count_list=content_sizes_count.collect()
+
+# X=sorted(content_sizes_count_list)
+# Y=[]
+# l=len(X)
+# Y.append(float(1)/l)
+# for i in range(2,l+1):
+#     Y.append(float(1)/l+Y[i-2])
+# plt.plot(X,Y,marker='o',label='CDF for Total Content size',color='green')
+# title('CDF for total Content Size'+"\n",fontsize=18,color='blue')
+# xlabel('Content (in bytes)--->',color='blue',fontsize=12)
+# ylabel('CDF--->',color='blue',fontsize=12)
+# plt.show()
 
 # Content_sizes_first_100000_webiste=access_logs.map(lambda log: (log.unique_id,log.content_size)).cache()
 # print Content_sizes_first_100000_webiste.take(10)
@@ -203,57 +210,97 @@ parsed_logs, access_logs, failed_logs = parseLogs()
 #=================================================================
 #Response code
 #=================================================================
-# response_code=access_logs.map(lambda log: log.response_code).cache()
-# labels=list()
-# fracs=list()
-# responseCode=access_logs.map(lambda log: log.response_code)
-# responseCodeToCount = (access_logs
-#                        .map(lambda log: (log.response_code, 1))
-#                        .reduceByKey(lambda a, b : a + b)
-#                        .cache())
-# #responseCodeToCountList = responseCodeToCount.take(100)
-# #print 'Found %d response codes' % len(responseCodeToCountList)
-# #print 'Response Code Counts: %s' % responseCodeToCountList
+response_code=access_logs.map(lambda log: log.response_code).cache()
+labels=list()
+fracs=list()
+responseCode=access_logs.map(lambda log: log.response_code)
+responseCodeToCount = (access_logs
+                       .map(lambda log: (log.response_code, 1))
+                       .reduceByKey(lambda a, b : a + b)
+                       .cache())
+responseCodeToCountList = responseCodeToCount.collect()
+print 'Found %d response codes' % len(responseCodeToCountList)
+print 'Response Code Counts: %s' % responseCodeToCountList
+labels=list()
+fracs=list()
+sorted_by_second = sorted(responseCodeToCountList, key=lambda tup: tup[0])
+for item in sorted_by_second:
+    labels.append(item[0])
+    value=float(item[1]*100)/access_logs.count()
+    fracs.append(value)
+print "labels",labels
+print "Number_Res_code",fracs
 
-# for item in responseCodeToCountList:
-#     labels.append(item[0])
-#     value=float(item[1])/access_logs.count()
-#     fracs.append(value)
-# print "labels",labels
-# print "Number_Res_code",fracs
+rcParams['figure.figsize'] = 18, 7
+rcParams['font.size'] = 8
 
-# rcParams['figure.figsize'] = 18, 7
-# rcParams['font.size'] = 8
+N = len(fracs)
 
-# N = len(fracs)
+ind = range(N)
 
-# ind = range(N)
+pos=arange(len(labels))+0.1
+fig = plt.figure()
 
-# fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.bar(ind,fracs,log='true',align='center')
 
-# ax = fig.add_subplot(111)
-# ax.bar(ind,fracs,log='true',align='center')
+ax.set_ylabel('Percentage of web objects -- >',fontsize=14)
+ax.set_xlabel('Response codes -->',fontsize=14)
 
-# ax.set_ylabel('Percentage of web objects -- >',fontsize=14)
-# ax.set_xlabel('Response codes -->',fontsize=14)
+ax.set_title('Log bar Plot for response code graph for Alexa top 100,000 websites'+"\n",fontsize=18)  
 
-# ax.set_title('Response code graph for Alexa top 1 milion websites'+"\n",fontsize=18)               
+colors=list()
+labels_legend=list()
+for value in sorted_by_second:
+    if value[0]>=200 and value[0]<300:
+        colors.append('b')
+        if '200-300' not in labels_legend:
+            labels_legend.append('200-300')
+            ax.bar(pos,fracs,log='true',align='center',color='b',label='200-299')
+    elif value[0]>=300 and value[0]<400:
+        colors.append('g')
+        if '300-400' not in labels_legend:
+            labels_legend.append('300-400')
+            ax.bar(pos,fracs,log='true',align='center',color='g',label='300-399')
+    elif value[0]>=400 and value[0]<500:
+        if '400-500' not in labels_legend:
+            labels_legend.append('400-500')
+            ax.bar(pos,fracs,log='true',align='center',color='r',label='400-499')
+        colors.append('r')
+    elif value[0]>=500 and value[0]<600:
+        if '500-600' not in labels_legend:
+            labels_legend.append('500-600')
+            ax.bar(pos,fracs,log='true',align='center',color='c',label='500-599')
+        colors.append('c')
+    elif value[0]>=600 and value[0]<700:
+        if '600-700' not in labels_legend:
+            labels_legend.append('600-700')
+            ax.bar(pos,fracs,log='true',align='center',color='m',label='600-699')
+        colors.append('m')
+    elif value[0]>=700 and value[0]<800:
+        if '700-800' not in labels_legend:
+            labels_legend.append('700-800')
+            ax.bar(pos,fracs,log='true',align='center',color='y',label='700-799')
+        colors.append('y')
+    else:
+        if '900+' not in labels_legend:
+            labels_legend.append('900+')
+            ax.bar(pos,fracs,log='true',align='center',color='k',label='900+')
+        colors.append('k')             
 
-# ax.set_xticks(ind)
-# ax.set_xticklabels(labels)
-# ax.grid()                                      
+ax.bar(pos,fracs,log='true',align='center',color=colors)
+ax.set_xticks(pos)
+ax.set_xticklabels(labels)
+ax.grid()
+ax.legend()                                    
 
-# fig.autofmt_xdate(bottom=0.2, rotation=90, ha='left')
-
-# plt.yscale('log')
-# #Uncomment the line for plotting bars in graph
-# #plt.yscale('log',nonposy='clip')
-# plt.show()
+fig.autofmt_xdate(bottom=0.2, rotation=90, ha='left')
+show()
 
 #End of Response code
-#============================================================================================
-#Start of Type of script
-#============================================================================================
+# #============================================================================================
+# #Start of Type of script
+# #============================================================================================
 # urlRDD=access_logs.map(lambda log: log.url).cache()
 # urlwithScriptRDD=urlRDD.filter(lambda value:'.php' in value or '.jsp' in value or '.aspx' in value
 #                                 or '.perl' in value or '.css' in value or '.rb' in value
@@ -266,15 +313,16 @@ parsed_logs, access_logs, failed_logs = parseLogs()
 # urlWithrubylist=urlRDD.filter(lambda value:'.rb' in value).collect()
 # urlWithpythonlist=urlRDD.filter(lambda value:'.py' in value).collect()
 
-# labels=('PHP','JAVA','ASP','PERL','CSS','RUBY','PYTHON')
+# labels=('PHP','JAVA','ASP','PERL','CSS','RUBY','PYTHON','OTHER')
 # fracs=list()
-# valuephp=float(len(urlWithphplist))/urlwithScriptRDD.count()
-# valuejava=float(len(urlWithjavalist))/urlwithScriptRDD.count()
-# valueasp=float(len(urlWithasplist))/urlwithScriptRDD.count()
-# valueperl=float(len(urlWithperllist))/urlwithScriptRDD.count()
-# valuecss=float(len(urlWithcsslist))/urlwithScriptRDD.count()
-# valueruby=float(len(urlWithrubylist))/urlwithScriptRDD.count()
-# valuepython=float(len(urlWithpythonlist))/urlwithScriptRDD.count()
+# valuephp=(float(len(urlWithphplist))/urlRDD.count())*100
+# valuejava=(float(len(urlWithjavalist))/urlRDD.count())*100
+# valueasp=(float(len(urlWithasplist))/urlRDD.count())*100
+# valueperl=(float(len(urlWithperllist))/urlRDD.count())*100
+# valuecss=(float(len(urlWithcsslist))/urlRDD.count())*100
+# valueruby=(float(len(urlWithrubylist))/urlRDD.count())*100
+# valuepython=(float(len(urlWithpythonlist))/urlRDD.count())*100
+# valueother=100-(valuephp+valuejava+valueasp+valueperl+valuecss+valueruby+valuepython)
 # fracs.append(valuephp)
 # fracs.append(valuejava)
 # fracs.append(valueasp)
@@ -282,29 +330,123 @@ parsed_logs, access_logs, failed_logs = parseLogs()
 # fracs.append(valuecss)
 # fracs.append(valueruby)
 # fracs.append(valuepython)
+# fracs.append(valueother)
 
-# xlabel('Percentage--->',color='black',fontsize=24)
-# ylabel('Server side languages--->',color='black',fontsize=24)
-# title('Usage of server-side programming languages for Alexa Top 1 milion websites'+"\n",fontsize=30)
+# fig, ax= plt.subplots(figsize=(9, 7))
+# ax.axis([0, 100,0,7])
+
+# xlabel('Percentage--->',color='black',fontsize=12)
+# ylabel('Server side languages--->',color='black',fontsize=12)
+# title('Percentages of websites from Alexa Top 1 milion websites using various server-side programming languages '+"\n",color='green',fontsize=18)
 # width=0.5
 # pos=arange(len(labels))+0.5
-# barh(pos,fracs,align='center',color='green')
+# rects=barh(pos,fracs,align='center',color='blue')
 # yticks(pos,labels)
-# show()
+# suffixes = ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th']
+# for rect in rects:
+#     # Rectangle widths are already integer-valued but are floating
+#     # type, so it helps to remove the trailing decimal point and 0 by
+#     # converting width to int type
+#     width = float(rect.get_width())
+#     width = float("{0:.2f}".format(width))
+
+#     # Figure out what the last digit (width modulo 10) so we can add
+#     # the appropriate numerical suffix (e.g., 1st, 2nd, 3rd, etc)
+#     # lastDigit = width % 10
+#     # # Note that 11, 12, and 13 are special cases
+#     # if (width == 11) or (width == 12) or (width == 13):
+#     #     suffix = 'th'
+#     # else:
+#     #     suffix = suffixes[lastDigit]
+
+#     rankStr = str(width) + '%'
+#     if (width < 5):        # The bars aren't wide enough to print the ranking inside
+#         xloc = width + 1   # Shift the text to the right side of the right edge
+#         clr = 'black'      # Black against white background
+#         align = 'left'
+#     else:
+#         xloc = 0.98*width  # Shift the text to the left side of the right edge
+#         clr = 'white'      # White on magenta
+#         align = 'right'
+
+#     # Center the text vertically in the bar
+#     yloc = rect.get_y()+rect.get_height()/2.0
+#     ax.text(xloc, yloc, rankStr, horizontalalignment=align,
+#             verticalalignment='center', color=clr, weight='bold')
+# plt.show()
 
 #End of Type of Script
+
+#============================================================================================
+#Start of Type of client script
+#============================================================================================
+# urlRDD=access_logs.map(lambda log: log.url).cache()
+# urlwithScriptRDD=urlRDD.filter(lambda value:('.js' in value or '.swf' in value or '.xap' in value) and '.jsp' not in value )
+# urlWithjavascriptlist=urlRDD.filter(lambda value:'.js' in value and '.jsp' not in value).collect()
+# urlWithflashlist=urlRDD.filter(lambda value:'.swf' in value).collect()
+# urlWithsilverlightlist=urlRDD.filter(lambda value:'.xap' in value).collect()
+
+# labels=('Javascript','Flash','Silverlight')
+# fracs=list()
+# valueJavascript=(float(len(urlWithjavascriptlist))/urlwithScriptRDD.count())*100
+# valueflash=(float(len(urlWithflashlist))/urlwithScriptRDD.count())*100
+# valuesilverlight=(float(len(urlWithsilverlightlist))/urlwithScriptRDD.count())*100
+
+# fracs.append(valueJavascript)
+# fracs.append(valueflash)
+# fracs.append(valuesilverlight)
+
+# fig, ax= plt.subplots(figsize=(9, 7))
+# ax.axis([0, 100,0,7])
+
+# xlabel('Percentage--->',color='black',fontsize=12)
+# ylabel('Server side languages--->',color='black',fontsize=12)
+# title('Percentages of websites from Alexa Top 1 milion websites using various Client-side programming languages '+"\n",color='green',fontsize=18)
+# width=0.5
+# pos=arange(len(labels))+0.5
+# rects=barh(pos,fracs,align='center',color='blue')
+# yticks(pos,labels)
+# suffixes = ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th']
+# for rect in rects:
+#     # Rectangle widths are already integer-valued but are floating
+#     # type, so it helps to remove the trailing decimal point and 0 by
+#     # converting width to int type
+#     width = float(rect.get_width())
+#     width = float("{0:.2f}".format(width))
+
+#     # Figure out what the last digit (width modulo 10) so we can add
+#     # the appropriate numerical suffix (e.g., 1st, 2nd, 3rd, etc)
+#     # lastDigit = width % 10
+#     # # Note that 11, 12, and 13 are special cases
+#     # if (width == 11) or (width == 12) or (width == 13):
+#     #     suffix = 'th'
+#     # else:
+#     #     suffix = suffixes[lastDigit]
+
+#     rankStr = str(width) + '%'
+#     if (width < 5):        # The bars aren't wide enough to print the ranking inside
+#         xloc = width + 1   # Shift the text to the right side of the right edge
+#         clr = 'black'      # Black against white background
+#         align = 'left'
+#     else:
+#         xloc = 0.98*width  # Shift the text to the left side of the right edge
+#         clr = 'white'      # White on magenta
+#         align = 'right'
+
+#     # Center the text vertically in the bar
+#     yloc = rect.get_y()+rect.get_height()/2.0
+#     ax.text(xloc, yloc, rankStr, horizontalalignment=align,
+#             verticalalignment='center', color=clr, weight='bold')
+# plt.show()
 #=============================================================================================
 #start of cookies
 #=============================================================================================
 # cookiesRDD=access_logs.map(lambda log:(log.url,log.cookies)).cache()
-# cookieswithUrlRDDList=cookiesRDD.collect()
-# urls=list()
+# cookieswithoutNullRDD=cookiesRDD.filter(lambda (x,y):'-' not in y).cache()
 # def getsecondleveldomain(url):
 #     with open("/home/soumya/Documents/thesis/scrapy_thes/webcrawlTest/trunk/effective_tld_names.dat") as tld_file:
 #         tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
-#     print "urlelements",url
 #     url_elements = urlparse(url)[1].split('.')
-#     print "url_elements",urlparse(url)[1]
 #     for i in range(-len(url_elements), 0):
 #         last_i_elements = url_elements[i:]
 #         candidate = ".".join(last_i_elements) # abcde.co.uk, co.uk, uk
@@ -312,11 +454,68 @@ parsed_logs, access_logs, failed_logs = parseLogs()
 #         exception_candidate = "!" + candidate
 #         # match tlds: 
 #         if (exception_candidate in tlds):
-#             print "url_elements[i:]",url_elements[i:]
 #             return ".".join(url_elements[i:]) 
 #         if (candidate in tlds or wildcard_candidate in tlds):
-#             print "url_elements[i-1:]",url_elements[i-1:]
 #             return ".".join(url_elements[i-1:])
+# def getsecondleveldomainValue(value):
+#     domain=value[0]
+#     secondlevelurl=str(getsecondleveldomain(domain))
+#     return (secondlevelurl,value[1])
+# allURLswithSecondlevelDomainRDD=cookieswithoutNullRDD.map(getsecondleveldomainValue).cache()
+# allFirstPartyCookiesRDD=allURLswithSecondlevelDomainRDD.filter(lambda (x,y) :x in y)
+# allThirdPartyCookiesRDD=allURLswithSecondlevelDomainRDD.filter(lambda (x,y) :'.com' in y and x not in y)
+# allThirdPartyCookieswithGoogleRDD=allThirdPartyCookiesRDD.filter(lambda (x,y) : 'google' in y)
+# allThirdPartyCookieswithGoogleAdvRDD=allThirdPartyCookiesRDD.filter(lambda (x,y) : 'doubleclick' in y)
+# allThirdPartyCookieswithfacebookRDD=allThirdPartyCookiesRDD.filter(lambda (x,y) : 'facebook' in y)
+# allThirdPartyCookieswithamazonRDD=allThirdPartyCookiesRDD.filter(lambda (x,y) : 'amazon' in y)
+# allThirdPartyCookieswithebayRDD=allThirdPartyCookiesRDD.filter(lambda (x,y) : 'ebay' in y)
+# allThirdPartyCookieswithakamaiRDD=allThirdPartyCookiesRDD.filter(lambda (x,y) : 'akamai' in y)
+# allThirdPartyCookieswithtwitterRDD=allThirdPartyCookiesRDD.filter(lambda (x,y) : 'twitter' in y)
+
+# print allFirstPartyCookiesRDD.take(5)
+# print allThirdPartyCookiesRDD.take(10)
+# print allThirdPartyCookieswithGoogleAdvRDD.take(10)
+# print allThirdPartyCookieswithGoogleAdvRDD.count()
+
+# print allThirdPartyCookieswithGoogleRDD.count()
+# print allThirdPartyCookieswithfacebookRDD.count()
+# print allThirdPartyCookieswithamazonRDD.count()
+# print allThirdPartyCookieswithebayRDD.count()
+# print allThirdPartyCookieswithakamaiRDD.count()
+# print allThirdPartyCookieswithtwitterRDD.count()
+
+# allURLswithSecondlevelDomainRDDlist=allURLswithSecondlevelDomainRDD.collect()
+# first_party_cookie=list()
+# third_party_cookie=list()
+# for item in allURLswithSecondlevelDomainRDDlist:
+#     url=item[0]
+#     value=item[1]
+#     if item[1] is not None and url is not None:
+#         if url in item[1]:
+#             first_party_cookie.append(url)
+#         else:
+#             if '.com' in value and url not in value:
+#                 third_party_cookie.append(url)
+# print "first",len(first_party_cookie)
+# print "third",len(third_party_cookie)
+
+
+# cookieswithUrlRDDList=cookiesRDD.collect()
+# urls=list()
+# def getsecondleveldomain(url):
+#     with open("/home/soumya/Documents/thesis/scrapy_thes/webcrawlTest/trunk/effective_tld_names.dat") as tld_file:
+#         tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
+#     url_elements = urlparse(url)[1].split('.')
+#     for i in range(-len(url_elements), 0):
+#         last_i_elements = url_elements[i:]
+#         candidate = ".".join(last_i_elements) # abcde.co.uk, co.uk, uk
+#         wildcard_candidate = ".".join(["*"] + last_i_elements[1:]) # *.co.uk, *.uk, *
+#         exception_candidate = "!" + candidate
+#         # match tlds: 
+#         if (exception_candidate in tlds):
+#             return url_elements[i:][0]
+#         if (candidate in tlds or wildcard_candidate in tlds):
+#             return url_elements[i-1:][0]
 # first_party_cookie=list()
 # third_party_cookie=list()
 
@@ -403,25 +602,43 @@ parsed_logs, access_logs, failed_logs = parseLogs()
 # allhostwithUniquehost=allHostswithSecondlevelDomainRDD.map(lambda (x,y):(y,x))
 # allhostwithUniqueID=allhostwithUniquehost.groupByKey().cache()
 # HostCount = allhostwithUniqueID.map(lambda (x,y):(x,len(y))).cache()
-# HostCountSorted = HostCount.top(10, lambda s: s[1])
+# HostCountSorted = HostCount.top(100, lambda s: s[1])
 # print 'Top five Hosts: %s' % HostCountSorted
 # HostCountRDD = allhostwithUniquehost.groupByKey().mapValues(lambda x: set(x))
 # UniqueHostCount = HostCountRDD.map(lambda (x,y):(x,len(y))).cache()
-# UniqueHostCountSorted = UniqueHostCount.top(10, lambda s: s[1])
+# UniqueHostCountSorted = UniqueHostCount.top(100, lambda s: s[1])
 # print 'Top five Hosts: %s' % UniqueHostCountSorted
 #End of objectType
 #============================================================================================
 #Number of hits by IP address
 #=============================================================================================
-IPAddressRDD=access_logs.map(lambda log:(1,log.ip_address)).cache()
-IPAddressRDD=IPAddressRDD.map(lambda (count,ipaddress):(count,ipaddress.split(';')))
-IPAddresswithoutNullRDD=IPAddressRDD.filter(lambda (x,y):'-' not in y)
-def f(x): return x
-allIPAddressRDD=IPAddresswithoutNullRDD.flatMapValues(f).cache()
-allIPAddressCountRDD=allIPAddressRDD.map(lambda (x,y):(y,x))
-allIPAddressSum = allIPAddressCountRDD.reduceByKey(lambda x,y :x+y)
-allIPAddressTop25 = allIPAddressSum.top(25, lambda s: s[1])
-print 'Top 25 hosts that generated errors: %s' % allIPAddressTop25
+# IPAddressRDD=access_logs.map(lambda log:(1,log.ip_address)).cache()
+# IPAddressRDD=IPAddressRDD.map(lambda (count,ipaddress):(count,ipaddress.split(';')))
+# IPAddresswithoutNullRDD=IPAddressRDD.filter(lambda (x,y):'-' not in y)
+# def f(x): return x
+# allIPAddressRDD=IPAddresswithoutNullRDD.flatMapValues(f).cache()
+# allIPAddressCountRDD=allIPAddressRDD.map(lambda (x,y):(y,x))
+# allIPAddressSum = allIPAddressCountRDD.reduceByKey(lambda x,y :x+y)
+# allIPAddressTop25 = allIPAddressSum.top(100, lambda s: s[1])
+# print 'Top 100 hosts that generated errors: %s' % allIPAddressTop25
+
+#ASN NUMBER
+#==========================================================================
+
+# ASNRDD=access_logs.map(lambda log:(log.unique_id,log.asn_number)).cache()
+# ASNNumbersRDD=ASNRDD.map(lambda (id,asn):(id,asn.split(';')))
+# ASNwithoutNullRDD=ASNNumbersRDD.filter(lambda (x,y):'-' not in y)
+# def f(x): return x
+# allASNRDD=ASNwithoutNullRDD.flatMapValues(f).cache()
+# allASNCountRDD=allASNRDD.map(lambda (x,y):(y,x))
+# allUniqueIDwithCommonASN=allASNCountRDD.groupByKey().cache()
+# ASNCount = allUniqueIDwithCommonASN.map(lambda (x,y):(x,len(y))).cache()
+# ASNCountSorted = ASNCount.top(100, lambda s: s[1])
+# print 'Top 100 ASNS: %s' % ASNCountSorted
+# ASNCountRDD = allASNCountRDD.groupByKey().mapValues(lambda x: set(x))
+# UniqueASNCount = ASNCountRDD.map(lambda (x,y):(x,len(y))).cache()
+# UniqueASNCountSorted = UniqueASNCount.top(100, lambda s: s[1])
+# print 'Top 100 Unique ASNs: %s' % UniqueASNCountSorted
 
 #End of objectType
 #============================================================================================
@@ -474,3 +691,101 @@ print 'Top 25 hosts that generated errors: %s' % allIPAddressTop25
 #                .take(20))
 
 # print 'Any 20 hosts that have accessed more then 10 times: %s' % hostsPick20
+
+#*****************************************************************************************************************
+
+
+# logFile = open("/home/soumya/Documents/courses/output1m.csv",'r')
+# logwr = csv.reader(logFile,skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+ 
+# totaltimeForImage=0
+# totaltimeForScript=0
+# totaltimeForAnchor=0
+# totaltimeForLink=0
+# totaltimeForEmbeded=0
+# imageTime=list()
+# scriptlist=list()
+# anchrorlist=list()
+# linklist=list()
+# embededlist=list()
+
+
+# for line in logwr:
+#   # print line[11]
+#   # print line[10]
+#   if line[6] is 'A':
+#     time=datetime.datetime.strptime(line[11],"%H:%M:%S.%f")-datetime.datetime.strptime(line[10],"%H:%M:%S.%f")
+#     if time.days < 0:
+#         time = timedelta(days=0,seconds=time.seconds, microseconds=time.microseconds)
+#     totaltimeForAnchor+=time.total_seconds()
+#     anchrorlist.append(time.total_seconds())
+#   if line[6] is 'I':
+#     time=datetime.datetime.strptime(line[11],"%H:%M:%S.%f")-datetime.datetime.strptime(line[10],"%H:%M:%S.%f")
+#     if time.days < 0:
+#         time = timedelta(days=0,seconds=time.seconds, microseconds=time.microseconds)
+#     totaltimeForImage+=time.total_seconds()
+#     imageTime.append(time.total_seconds())
+#   if line[6] is 'S':
+#     time=datetime.datetime.strptime(line[11],"%H:%M:%S.%f")-datetime.datetime.strptime(line[10],"%H:%M:%S.%f")
+#     if time.days < 0:
+#         time = timedelta(days=0,seconds=time.seconds, microseconds=time.microseconds)
+#     totaltimeForScript+=time.total_seconds()
+#     scriptlist.append(time.total_seconds())
+#   if line[6] is 'L':
+#     time=datetime.datetime.strptime(line[11],"%H:%M:%S.%f")-datetime.datetime.strptime(line[10],"%H:%M:%S.%f")
+#     if time.days < 0:
+#         time = timedelta(days=0,seconds=time.seconds, microseconds=time.microseconds)
+#     totaltimeForLink+=time.total_seconds()
+#     linklist.append(time.total_seconds())
+#   if line[6] is 'E':
+#     time=datetime.datetime.strptime(line[11],"%H:%M:%S.%f")-datetime.datetime.strptime(line[10],"%H:%M:%S.%f")
+#     if time.days < 0:
+#         time = timedelta(days=0,seconds=time.seconds, microseconds=time.microseconds)
+#     totaltimeForEmbeded+=time.total_seconds()
+#     embededlist.append(time.total_seconds())
+# print "totaltimeForImage",totaltimeForImage
+# print "totaltimeForScript",totaltimeForScript
+# print "totaltimeForAnchor",totaltimeForAnchor
+# print "totaltimeForLink",totaltimeForLink
+# print "totaltimeForEmbeded",totaltimeForEmbeded
+
+# total=totaltimeForImage+totaltimeForScript+totaltimeForAnchor+totaltimeForLink+totaltimeForEmbeded
+# print "total",total
+
+# X=sorted(imageTime)
+# Y=[]
+# l=len(X)
+# Y.append(float(1)/l)
+# for i in range(2,l+1):
+#     Y.append(float(1)/l+Y[i-2])
+# plt.plot(X,Y,marker='o',label='CDF for Total time taken by Image objects',color='green')
+# title('CDF for total time taken by image objects'+"\n",fontsize=18,color='blue')
+# xlabel('Time (in seconds)--->',color='blue',fontsize=12)
+# ylabel('CDF--->',color='blue',fontsize=12)
+# plt.show()
+
+
+#*********************************************************************************************8
+
+# fig = plt.figure()
+# ax = fig.add_subplot(1, 1, 1)
+# ax.grid(True)
+
+# a = 0
+# nhist = 100                
+# b = np.max(imageTime)
+# c = b-a
+# d = float(c) / float(nhist)  #size of each bin
+# # tmp will contain a list of bins:  [a, a+d, a+2*d, a+3*d, ... b]
+# tmp = [a]
+# for i in range(nhist):
+#     if i == a:
+#         continue
+#     else:
+#         tmp.append(tmp[i-1] + d)
+
+# #  CDF of A 
+# ax.hist(imageTime, bins=tmp, cumulative=True, normed=True,
+#         color='red', histtype='step', linewidth=2.0,
+#         label='samples A')
+# plt.show()
