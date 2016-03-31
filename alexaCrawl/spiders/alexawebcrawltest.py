@@ -20,47 +20,58 @@ import Queue
 from scrapy.contrib.linkextractors.lxmlhtml import LxmlLinkExtractor
 from scrapy.http.cookies import CookieJar
 import ast
+from HTMLParser import HTMLParser
+from collections import defaultdict
+import threading
+import urllib
 
+
+list_of_tags=list()
+tags_d = defaultdict(int)
+lock = threading.Lock()
+reload(sys)
+sys.setdefaultencoding('utf-8')
+class MyHTMLParser(HTMLParser):
+    def handle_starttag(self, tag, attrs):
+        lock.acquire()
+        try:
+            tags_d[tag] += 1
+            # cdnlistFileWriter.writerow([tag])
+        finally:
+            lock.release()
+
+def getCodedList(sites,siteList):
+    if len(sites) > 0 :
+        for item in sites:
+            if isinstance(item, unicode):
+                item=item.encode('utf-8')
+                siteList.append(item)
+            else:
+                siteList.append(item)
+    return siteList
 #from scrapy.stats import stats
 class alexaSpider(Spider): 
     name='alexa'
     # global counter
     global resultFile
     global tagType
-    
     global dest_server_ip
     global _extract_object_count
     global getsecondleveldomain
-    
-    global dest_ASN
-    # global lock
-    
-    
-    
-    
+    global dest_ASN    
     global urllist
-    
-    global resulturldict
-
-    
+    global resulturldict   
     dest_ASN=[]
-    # counter=Counter(0)
-    tagType='O'
     dest_server_ip=[]
     urllist=[]
-    
     urlIndexlist=dict()
     resulturldict=dict()
-
-
     resultFile = codecs.open("output6.csv",'wbr+')
-
     """[Author:Som ,last modified:16th April 2015]
     def __init__ :this act as constructor for python
     we pass arguments from core.py and those will be 
     stored in kw."""
 
-    
     def __init__ (self,arg1,arg2):
         self.urllistfile=ast.literal_eval(arg1)
         self.urlIndexlist=ast.literal_eval(arg2)
@@ -88,10 +99,7 @@ class alexaSpider(Spider):
     def parse(self,response):
         urlList=[]
         r=[]
-        
         global resultFile
-       
-
         counter=response.meta.get('counter')
         page = self._get_item(response,counter)
 
@@ -112,43 +120,10 @@ class alexaSpider(Spider):
         if tagType:
             page['tagType']=tagType        
         else:
-            page['tagType']='O'
+            page['tagType']='a'
 
         r = [page]
-
-        page['InternalAnchorCount']=0
-        page['ExternalAnchorCount']=0
-        page['UniqueExternalSitesForAnchor']=0
-        
-        page['InternalImageCount']=0
-        page['ExternalImageCount']=0
-        page['UniqueExternalSitesForImage']=0
-
-        page['InternalscriptCount']=0
-        page['ExternalscriptCount']=0
-        page['UniqueExternalSitesForScript']=0
-
-        page['InternallinkCount']=0
-        page['ExternallinkCount']=0
-        page['UniqueExternalSitesForLink']=0
-
-        page['InternalembededCount']=0
-        page['ExternalembededCount']=0
-        page['UniqueExternalSitesForEmbeded']=0
-
-        # urlList.append(page['InternallinkCount'])
-        # urlList.append(page['ExternallinkCount'])
-        # urlList.append(page['UniqueExternalSitesForLink'])
-
-        # urlList.append(page['InternalembededCount'])
-        # urlList.append(page['ExternalembededCount'])
-        # urlList.append(page['UniqueExternalSitesForEmbeded'])
-
         r.extend(self._extract_requests(response,tagType,counter,page)) #external site link
-        # r.extend(self._extract_img_requests(response,tagType,counter,page)) #link to img files
-        # r.extend(self._extract_script_requests(response,tagType,counter,page)) #link to script files like java script etc
-        # r.extend(self._extract_external_link_requests(response,tagType,counter,page)) #link to css or any other external linked files
-        # r.extend(self._extract_embed_requests(response,tagType,counter,page)) #link to addresses of the external file to embed
 
         urlList.append(page['index'])
         urlList.append(page['depth_level'])
@@ -175,33 +150,9 @@ class alexaSpider(Spider):
             page['ASN_Number']='-'
 
         urlList.append(page['ASN_Number'])
-
-        urlList.append(page['InternalAnchorCount'])
-        urlList.append(page['ExternalAnchorCount'])
-        urlList.append(page['UniqueExternalSitesForAnchor'])
-
-        urlList.append(page['InternalImageCount'])
-        urlList.append(page['ExternalImageCount'])
-        urlList.append(page['UniqueExternalSitesForImage'])
-
-        urlList.append(page['InternalscriptCount'])
-        urlList.append(page['ExternalscriptCount'])
-        urlList.append(page['UniqueExternalSitesForScript'])
-
-        urlList.append(page['InternallinkCount'])
-        urlList.append(page['ExternallinkCount'])
-        urlList.append(page['UniqueExternalSitesForLink'])
-
-        urlList.append(page['InternalembededCount'])
-        urlList.append(page['ExternalembededCount'])
-        urlList.append(page['UniqueExternalSitesForEmbeded'])
-
         urlList.append(page['start_time'])
         page['end_time']=datetime.now().time()
         urlList.append(page['end_time'])
-
-        #r.extend(self._extract_script_requests(response,tagType,counter,page))
-
         wr = csv.writer(resultFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
 
         newUrlList=[]
@@ -239,70 +190,63 @@ class alexaSpider(Spider):
 
     @returns urls
     """
+
     #@profile
     def _extract_requests(self,response,tagType,counter,page):
         r = []
+        tags=set()
         counterValue=counter
-        if isinstance(response, HtmlResponse):
-            links = self.link_extractor.extract_links(response)
-            otherlist=list()
-            for item in links:
-                otherlist.append(item.url)
-            anchorlist=self._extract_anchor_requests(response,tagType,counter,page)
-            imagelist=self._extract_img_requests(response,tagType,counter,page) #link to img files
-            scriptlist=self._extract_script_requests(response,tagType,counter,page) #link to script files like java script etc
-            linklist=self._extract_external_link_requests(response,tagType,counter,page) #link to css or any other external linked files
-            embededlist=self._extract_embed_requests(response,tagType,counter,page) #link to addresses of the external file to embed
-
-            # finallist=otherlist+anchorlist+imagelist+scriptlist+linklist+embededlist
-
-            r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': 'A','download_timeout':3})for site in anchorlist  if site.startswith("http://") or site.startswith("https://"))
-            r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': 'I','download_timeout':3})for site in imagelist  if site.startswith("http://") or site.startswith("https://"))
-            r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': 'S','download_timeout':3})for site in scriptlist  if site.startswith("http://") or site.startswith("https://"))
-            r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': 'L','download_timeout':3})for site in linklist  if site.startswith("http://") or site.startswith("https://"))
-            r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': 'E','download_timeout':3})for site in embededlist  if site.startswith("http://") or site.startswith("https://"))
-            r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': 'O','download_timeout':3})for site in otherlist  if site.startswith("http://") or site.startswith("https://"))
-        return r
-
-    def _extract_anchor_requests(self,response,tag,counter,page):
-        r = []
-        siteList=[]
-        externalSites=[]
-        if isinstance(response, HtmlResponse):
-            tag='A'
-            counterValueImg=counter
-            sites = Selector(response).xpath('//a[contains(@href, "https://") or contains(@href, "http://")]/@href').extract()
-            if len(sites) > 0 :
-                for item in sites:
-                    if isinstance(item, unicode):
-                        item=item.encode('utf-8')
-                        siteList.append(item)
-                    else:
-                        siteList.append(item)
-                externalAnchorCount,InternalAnchorCount,uniqueAnchorSites,externalAnchor,secondlevelurl =_extract_object_count(siteList)
-                Anchorcount=len(siteList)
-
-                if InternalAnchorCount > 0 :
-                    page['InternalAnchorCount']=InternalAnchorCount
+        parser = MyHTMLParser()
+        sourceCode=response.body
+        parser.feed(sourceCode)
+        counterValue=counter
+        sites=list()
+        for k,v in tags_d.iteritems():
+            siteList=[]
+            if isinstance(response, HtmlResponse):
+                if str(k) =='a':
+                    for link in self.link_extractor.extract_links(response):
+                        sites.append(link.url)
+                    if len(sites) > 0 :
+                        for item in sites:
+                            if isinstance(item, unicode):
+                                item=item.encode('utf-8')
+                                siteList.append(item)
+                            else:
+                                siteList.append(item)
                 else:
-                    page['InternalAnchorCount']='0'
-
-                if externalAnchorCount:
-                    page['ExternalAnchorCount']=externalAnchorCount
-                else:
-                    page['ExternalAnchorCount']='0'
-                if uniqueAnchorSites:
-                    page['UniqueExternalSitesForAnchor']=uniqueAnchorSites
-                else:
-                    page['UniqueExternalSitesForAnchor']='0'
-
-                #r.extend(Request(site, callback=self.parse,method='HEAD',meta={'tagType': tag,'counter': counterValueImg,'download_timeout':5})for site in siteList if site.startswith("http://") or site.startswith("https://"))
-            else :
-                page['InternalAnchorCount']=0
-                page['ExternalAnchorCount']=0
-                page['UniqueExternalSitesForAnchor']=0
-
-        return siteList
+                    sites=Selector(response).xpath('//'+str(k)+'/@href').extract()
+                    siteSrc=Selector(response).xpath('//'+str(k)+'/@src').extract()
+                    siteCodebase=Selector(response).xpath('//'+str(k)+'/@codebase').extract()
+                    siteCite=Selector(response).xpath('//'+str(k)+'/@cite').extract()
+                    siteBackGround=Selector(response).xpath('//'+str(k)+'/@background').extract()
+                    siteActiom=Selector(response).xpath('//'+str(k)+'/@action').extract()
+                    siteLongdesc=Selector(response).xpath('//'+str(k)+'/@longdesc').extract()
+                    siteClassid=Selector(response).xpath('//'+str(k)+'/@classid').extract()
+                    siteData=Selector(response).xpath('//'+str(k)+'/@data').extract()
+                    siteUsemap=Selector(response).xpath('//'+str(k)+'/@usemap').extract()
+                    siteForm=Selector(response).xpath('//'+str(k)+'/@formaction').extract()
+                    siteIcon=Selector(response).xpath('//'+str(k)+'/@icon').extract()
+                    sitePoster=Selector(response).xpath('//'+str(k)+'/@poster').extract()
+                    siteArchieve=Selector(response).xpath('//'+str(k)+'/@archive').extract()
+                    siteManifest=Selector(response).xpath('//'+str(k)+'/@manifest').extract()
+                    siteList=getCodedList(sites,siteList)
+                    siteList=getCodedList(siteSrc,siteList)
+                    siteList=getCodedList(siteCodebase,siteList)
+                    siteList=getCodedList(siteCite,siteList)
+                    siteList=getCodedList(siteBackGround,siteList)
+                    siteList=getCodedList(siteActiom,siteList)
+                    siteList=getCodedList(siteLongdesc,siteList)
+                    siteList=getCodedList(siteClassid,siteList)
+                    siteList=getCodedList(siteData,siteList)
+                    siteList=getCodedList(siteUsemap,siteList)
+                    siteList=getCodedList(siteForm,siteList)
+                    siteList=getCodedList(siteIcon,siteList)
+                    siteList=getCodedList(sitePoster,siteList)
+                    siteList=getCodedList(siteArchieve,siteList)
+                    siteList=getCodedList(siteManifest,siteList)
+            r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': str(k),'download_timeout':3})for site in siteList if site.startswith("http://") or site.startswith("https://") or site.startswith("www."))            
+        return r        
     #@profile
     def _extract_object_count(siteList):
         InternalSitesCount=0
@@ -317,208 +261,6 @@ class alexaSpider(Spider):
             else:
                 InternalSitesCount+=1
         return (externalSitesCount,InternalSitesCount,len(uniqueExternalSites),externalSites,uniqueExternalSites)
-    #@profile
-    def _extract_img_requests(self,response,tag,counter,page):
-        r = []
-        siteList=[]
-        externalSites=[]
-        if isinstance(response, HtmlResponse):
-            tag='I'
-            counterValueImg=counter
-            sites = Selector(response).xpath("//img/@src").extract()
-            if len(sites) > 0 :
-                for item in sites:
-                    if isinstance(item, unicode):
-                        item=item.encode('utf-8')
-                        siteList.append(item)
-                    else:
-                        siteList.append(item)
-                externalImageCount,InternalImageCount,uniqueExternalSites,externalSites,secondlevelurl =_extract_object_count(siteList)
-                Imagecount=len(siteList)
-
-                if InternalImageCount > 0 :
-                    page['InternalImageCount']=InternalImageCount
-                else:
-                    page['InternalImageCount']='0'
-
-                if externalImageCount:
-                    page['ExternalImageCount']=externalImageCount
-                else:
-                    page['ExternalImageCount']='0'
-                if uniqueExternalSites:
-                    page['UniqueExternalSitesForImage']=uniqueExternalSites
-                else:
-                    page['UniqueExternalSitesForImage']='0'
-
-                #r.extend(Request(site, callback=self.parse,method='HEAD',meta={'tagType': tag,'counter': counterValueImg,'download_timeout':5})for site in siteList if site.startswith("http://") or site.startswith("https://"))
-            else :
-                page['InternalImageCount']=0
-                page['ExternalImageCount']=0
-                page['UniqueExternalSitesForImage']=0
-
-        return siteList
-    #@profile
-    def _extract_script_requests(self,response,tag,counter,page):
-        r=[]
-        siteList=[]
-        externalSites=[]
-        #uniqueExternalSites=[]
-        if isinstance(response, HtmlResponse):
-            tag='S'
-            #scriptcount=0
-            counterValueScript=counter
-            sites = Selector(response).xpath("//script/@src").extract()
-            # for site in sites:
-            #     scriptcount=scriptcount+1
-            #logging.info('scriptcount',scriptcount)
-
-            #logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-            
-            if len(sites) > 0:
-                for item in sites:
-                    if isinstance(item, unicode):
-                        item=item.encode('utf-8')
-                        siteList.append(item)
-                    else:
-                        siteList.append(item)
-
-                externalscriptCount,InternalscriptCount,uniqueExternalSites,externalSites,secondlevelurl=_extract_object_count(siteList)
-                scriptcount=len(siteList)
-                if InternalscriptCount:
-                    page['InternalscriptCount']=InternalscriptCount
-                else:
-                    page['InternalscriptCount']='0'
-
-                if externalscriptCount:
-                    page['ExternalscriptCount']=externalscriptCount
-                else:
-                    page['InternalscriptCount']='0'
-                if uniqueExternalSites:
-                    page['UniqueExternalSitesForScript']=uniqueExternalSites
-                else:
-                    page['UniqueExternalSitesForScript']='0'
-                # page['InternalscriptCount']=InternalscriptCount
-                # page['ExternalscriptCount']=externalscriptCount
-                # page['UniqueExternalSitesForScript']=uniqueExternalSites
-
-                #logwr.writerow({'url': response.url, 'counter': counterValueScript,'InternalscriptCount':InternalscriptCount,'ExternalscriptCount':externalscriptCount,'UniqueExternalSites':uniqueExternalSites,'ExternalSites':externalSites,'secondlevelurl':secondlevelurl})
-                #lock.release()
-                #r.extend(Request(site, callback=self.parse,method='HEAD',meta={'tagType': tag,'counter': counterValueScript,'download_timeout':5})for site in siteList if site.startswith("http://") or site.startswith("https://"))
-            else:
-                page['InternalscriptCount']='0'
-                page['InternalscriptCount']='0'
-                page['UniqueExternalSitesForScript']='0'
-        return siteList
-    #@profile
-    def _extract_external_link_requests(self,response,tag,counter,page):
-        r=[]
-        siteList=[]
-        externalSites=[]
-        #uniqueExternalSites=[]
-        if isinstance(response, HtmlResponse):
-            tag='L'
-            #linkcount=0
-            counterValueLink=counter
-            sites = Selector(response).xpath("//link/@href").extract()
-            # for site in sites:
-            #     linkcount=linkcount+1
-            #logging.info('linkcount',linkcount)
-
-            #logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-            if len(sites) >0:
-                for item in sites:
-                    if isinstance(item, unicode):
-                        item=item.encode('utf-8')
-                        siteList.append(item)
-                    else:
-                        siteList.append(item)
-                sites.append(counterValueLink)
-                externallinkCount,InternallinkCount,uniqueExternalSites,externalSites,secondlevelurl=_extract_object_count(siteList)
-                #wr.writerow(siteList)
-                linkcount=len(siteList)
-
-                if InternallinkCount:
-                    page['InternallinkCount']=InternallinkCount
-                else:
-                    page['InternallinkCount']='0'
-
-                if externallinkCount:
-                    page['ExternallinkCount']=externallinkCount
-                else:
-                    page['ExternallinkCount']='0'
-                if uniqueExternalSites:
-                    page['UniqueExternalSitesForLink']=uniqueExternalSites
-                else:
-                    page['UniqueExternalSitesForLink']='0'
-
-                # page['InternallinkCount']=InternallinkCount
-                # page['ExternallinkCount']=externallinkCount
-                # page['UniqueExternalSitesForLink']=uniqueExternalSites
-
-               #logwr.writerow({'url': response.url, 'counter': counterValueLink,'InternallinkCount':InternallinkCount,'ExternallinkCount':externallinkCount,'UniqueExternalSites':uniqueExternalSites,'ExternalSites':externalSites,'secondlevelurl':secondlevelurl})
-                #lock.acquire()
-                #lock.release()
-                #r.extend(Request(site, callback=self.parse,method='HEAD',meta={'tagType': tag,'counter': counterValueLink,'download_timeout':5})for site in siteList if site.startswith("http://") or site.startswith("https://"))
-            else:
-                page['InternallinkCount']='0'
-                page['ExternallinkCount']='0'
-                page['UniqueExternalSitesForLink']='0'
-        return siteList
-    #@profile
-    def _extract_embed_requests(self,response,tag,counter,page):
-        r=[]
-        siteList=[]
-       
-        externalSites=[]
-        #uniqueExternalSites=set()
-        if isinstance(response, HtmlResponse):
-            tag='E'
-            #embededcount=0
-            counterValueEmded=counter
-            sites = Selector(response).xpath("//embed/@src").extract()
-            # for site in sites:
-            #     embededcount=embededcount+1
-            #logging.info('embededcount',embededcount)
-
-            #logwr = csv.writer(logFile, delimiter=',',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-            if len(sites) > 0 :
-                for item in sites:
-                    if isinstance(item, unicode):
-                        item=item.encode('utf-8')
-                        siteList.append(item)
-                    else:
-                        siteList.append(item)
-
-                externalembededCount,InternalembededCount,uniqueExternalSites,externalSites,secondlevelurl=_extract_object_count(siteList)
-                embededcount=len(siteList)
-
-                if InternalembededCount:
-                    page['InternalembededCount']=InternalembededCount
-                else:
-                    page['InternalembededCount']='0'
-
-                if externalembededCount:
-                    page['ExternalembededCount']=externalembededCount
-                else:
-                    page['ExternalembededCount']='0'
-                if uniqueExternalSites:
-                    page['UniqueExternalSitesForEmbeded']=uniqueExternalSites
-                else:
-                    page['UniqueExternalSitesForEmbeded']='0'
-
-                # page['InternalembededCount']=InternalembededCount
-                # page['ExternalembededCount']=externalembededCount
-                # page['UniqueExternalSitesForEmbeded']=uniqueExternalSites
-
-                #logwr.writerow({'url': response.url, 'counter': counterValueEmded,'InternalembededCount':InternalembededCount,'ExternalembededCount':externalembededCount,'UniqueExternalSites':uniqueExternalSites,'ExternalSites':externalSites,'secondlevelurl':secondlevelurl})
-                #lock.acquire()
-                #lock.release()
-                #r.extend(Request(site, callback=self.parse,method='HEAD',meta={'tagType': tag,'counter': counterValueEmded,'download_timeout':5})for site in siteList if site.startswith("http://") or site.startswith("https://"))
-            else:
-                page['InternalembededCount']='0'
-                page['ExternalembededCount']='0'
-                page['UniqueExternalSitesForEmbeded']='0'
-        return siteList
     #@profile
     def _set_title(self, page, response):
         if isinstance(response, HtmlResponse):

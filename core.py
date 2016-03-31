@@ -1,91 +1,43 @@
 import csv
-import os
-import alexaCrawl.spiders
 import multiprocessing as mp
-import random
 import Queue
-import time
-import logging
-from twisted.internet import reactor
-from scrapy.crawler import Crawler
-from scrapy import log, signals
-from scrapy.utils.project import get_project_settings
-from datetime import datetime, date,time
-from multiprocessing import Process, Value, Lock
-from scrapy.contrib.exporter import XmlItemExporter
 from alexaCrawl.spiders.alexawebcrawltest import alexaSpider
-from scrapy.utils.project import get_project_settings
-from urlparse import urlparse
-from twisted.internet import reactor
-from scrapy.crawler import Crawler
+from alexaCrawl.spiders.alexawebcrawltest import tags_d
 from scrapy import cmdline
-from scrapy import log
 import codecs
-import sys
 import re
-import fileinput, sys, csv
+import sys
+import time
+import os
+from collections import defaultdict
 
-
-class Counter(object):
-    def __init__(self, initval=0):
-        self.val = Value('i', initval)
-        self.lock = Lock()
-
-    def increment(self):
-        with self.lock:
-            self.val.value += 1
-
-    def value(self):
-        with self.lock:
-            return self.val.value
-
-class ReactorControl:
-    def __init__(self):
-        self.crawlers_running = 0
-
-    def add_crawler(self):
-        self.crawlers_running += 1
-
-    def remove_crawler(self):
-        self.crawlers_running -= 1
-        if self.crawlers_running == 0 :
-            reactor.stop()
-
-reactor_control = ReactorControl()
-counter = Counter(0)
-lock=Lock()
+start_time = time.time()
 rowValues=[]
-finalItemList=[]
 listOfLists=[]
 urlIndexlist=dict()
 
-row_no=1
-code_chunk=1
-listrange=40
+listrange=10
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
+finallist=list()
+tags_d = defaultdict(int)
 
-listOfLists=[[] for _ in range(listrange)]
-OutputFile = codecs.open("output6.csv",'wbr+')
-urllistFile=open("urllistFile.txt",'wbr+')
-wr = csv.writer(OutputFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-#urllistFileWriter= csv.writer(urllistFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+#listOfLists=[[] for _ in range(listrange)]
 
-with open('top-1m.csv') as csvfile:
-    spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|') 
-    for row in spamreader:
-        rowValue=', '.join(row)
-        rowValues=rowValue.split(",")
+
+
+"""[Author  : Soumya ranjan Parida]
+Function : makeSublist
+This function can be used to create multiple sublist from the list of 100,000 websites.
+Each sublist will contain equal share of websites like 1st list will contain 1st,51st,101th etc. websites,
+2nd list will contain 2nd,52nd,102nd websites etc."""
+def makeSublist(urllist):
+    listOfLists=[[] for _ in range(listrange)]
+    for rowValues in urllist:
         urlIndexlist[rowValues[1]]=rowValues[0]
         IndexInTop1mFile.append(rowValues[0])
-        if (code_chunk==row_no):
-            listOfLists[row_no-1].append(rowValues[1])             
-            if (row_no==listrange):
-                row_no=row_no%listrange
-            row_no=row_no+1
-            code_chunk=(row_no%10000)
-        else:
-            break
+        listOfLists[(int(rowValues[0]) - 1) % listrange].append(rowValues[1])
+    return listOfLists
 
 """[Author  : Soumya ranjan Parida]
 Function : setup_crawler
@@ -93,102 +45,18 @@ This function can be used to create multiple spiders
 inside single process"""
 
 def worker(urllist,out_q,i):
+    global tags_d
     cmdline.execute([
     'scrapy', 'crawl', 'alexa',
     '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist)])
-    # rowID=set()
-    # indexMissed=list()
-    # for row in 'item'+str(i):
-    #     rowID.append(row['index'])
-    #     indexMissed=list(set(urlIndexlist)-set(rowID))
-    # urllistFile.write(indexMissed)
-    # for item in indexMissed:
-    #     Urlmixed.append(get_key_from_value(urlIndexlist,item))
-    # cmdline.execute([
-    # 'scrapy', 'crawl', 'alexa',
-    # '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist)])
     return
 
-# def worker(urllist,out_q,i):
-#     outdict =    {}
-#     files = {}
-#     items=[]
-#     newUrlList=[]
-#     dircount=0
-#     def add_item(item):
-#         urlList=[]
-#         urlList.append(item['index'])
-#         urlList.append(item['depth_level'])
-#         urlList.append(item['httpResponseStatus'])
-#         urlList.append(item['content_length'])
-#         urlList.append(item['url'].strip())
-#         cookieStr=';'.join(item['newcookies'])
-#         urlList.append(cookieStr.strip())
-#         urlList.append(item['tagType'])
-#         cname=';'.join(item['CNAMEChain'])
-#         urlList.append(cname)
-#         urlList.append(item['destIP'])
-#         urlList.append(item['ASN_Number'])
-#         urlList.append(item['start_time'])
-#         urlList.append(item['end_time'])
 
-#         urlList.append(item['InternalImageCount'])
-#         urlList.append(item['ExternalImageCount'])
-#         urlList.append(item['UniqueExternalSitesForImage'])
-
-#         urlList.append(item['InternalscriptCount'])
-#         urlList.append(item['ExternalscriptCount'])
-#         urlList.append(item['UniqueExternalSitesForScript'])
-
-#         urlList.append(item['InternallinkCount'])
-#         urlList.append(item['ExternallinkCount'])
-#         urlList.append(item['UniqueExternalSitesForLink'])
-
-#         urlList.append(item['InternalembededCount'])
-#         urlList.append(item['ExternalembededCount'])
-#         urlList.append(item['UniqueExternalSitesForEmbeded'])
-
-#         items.append(urlList)
-    
-#     # spider = alexaSpider(domain=urllist,counter=urlIndexlist,outputfileIndex=i,spider_queue=out_q)
-#     cmdline.execute([
-#     'scrapy', 'crawl', 'alexa',
-#     '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist),'-o','item'+str(i)+'.csv'])
-#     settings = get_project_settings()
-#     crawler = Crawler(settings)
-#     crawler.signals.connect(add_item, signals.item_passed)
-#     crawler.signals.connect(reactor_control.remove_crawler, signal=signals.spider_closed)
-#     crawler.configure()
-#     crawler.crawl(spider)
-#     jobdir='alexa-1'+str(i)+str(dircount)
-#     crawler.settings.set('JOBDIR',jobdir)
-#     reactor_control.add_crawler()
-#     crawler.start()
-    
-#     settings = get_project_settings()
-#     crawler = Crawler(settings)
-#     reactor.run()
-
-#     for value in items:
-#         outputList=[]
-#         for item in value:
-#             if isinstance(item, unicode):
-#                 item=item.encode('utf-8')
-#                 outputList.append(item)
-#             elif isinstance(item,str):
-#                 item=item
-#                 outputList.append(item)
-#             else:
-#                 item=item
-#                 outputList.append(item)
-#         wr.writerow(outputList)
-#     return
-
+'''
+Given any number of dicts, shallow copy and merge into a new dict,
+precedence goes to key value pairs in latter dicts.
+'''
 def merge_dicts(*dict_args):
-    '''
-    Given any number of dicts, shallow copy and merge into a new dict,
-    precedence goes to key value pairs in latter dicts.
-    '''
     result = {}
     for dictionary in dict_args:
         result.update(dictionary)
@@ -199,101 +67,90 @@ def multiProc_crawler(domainlist,nprocs):
     out_q = Queue.Queue()
     finalresult=[]
     procs = []
-    for i in xrange(nprocs):           
+    for i in xrange(nprocs):          
         p = mp.Process(target=worker,
                 args=(domainlist[i],out_q,i))
         procs.append(p)
         p.start()
-
-    # for i in xrange(nprocs):
-    # chunks=[domainlist[x:x+nprocs] for x in xrange(0, len(domainlist), nprocs)]
-    # for j in xrange(len(chunks)):
-    #     urllistFile.write("\n"+",".join(chunks[j]))
-    #     p = mp.Process(target=worker,
-    #             args=(chunks[j],out_q))
-    #     procs.append(p)
-    #     p.start()
     for job in procs:
         job.join()
-
-
     maxInt = sys.maxsize
     decrement = True
-
+    # decrease the maxInt value by factor 10 
+    # as long as the OverflowError occurs.
     while decrement:
-        # decrease the maxInt value by factor 10 
-        # as long as the OverflowError occurs.
-
         decrement = False
         try:
             csv.field_size_limit(maxInt)
         except OverflowError:
             maxInt = int(maxInt/10)
             decrement = True
-    
-#[Som] :These lines can be used later for multiprocessing
-resultlist=[]
-multiProc_crawler(listOfLists,listrange)
-# for item in listOfLists:
-#     urllistFile.write(",".join(item))
-#     multiProc_crawler(item,listrange)
-#logFile = fileinput.input("output6.csv",inplace=True)
-#logwr = csv.reader(logFile,skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL,dialect=csv.excel_tab)
-#logwriter = csv.writer(sys.stdout) 
-#APACHE_ACCESS_LOG_PATTERN = '(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(^(2[0-3]|[01]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9]).(\d{6})$)(\t)(^(2[0-3]|[01]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9]).(\d{6})$)'
-APACHE_ACCESS_LOG_PATTERN ='(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})'
-wordcount=list()
-UrlNotInResultFile=list()
-i = 0
-logwr = open("output6.csv").readlines()
-for line in logwr:
-    match = re.search(APACHE_ACCESS_LOG_PATTERN, line)
-    if match is None:
-        logwr.pop(i)
-    i=i+1
-open("output.csv", "w").write("".join(logwr))
 
-logFile = codecs.open("output.csv",'rU')
-IndexNotInResultFile=list()
-wordcount=set()
-UrlNotInResultFile=list()
-outputReader = csv.reader(logFile,skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL,dialect=csv.excel_tab)
-for line in outputReader:
-        wordcount.add(line[0])
-IndexNotInResultFile=list(set(IndexInTop1mFile) - set(wordcount))
-def get_key_from_value(my_dict, v):
-    for key,value in my_dict.items():
-        if value == v:
-            return key
-    return None
-for item in IndexNotInResultFile:
-    UrlNotInResultFile.append(get_key_from_value(urlIndexlist,item))
-listrangeNew=1
-listOfListsNew=[]
-for item in UrlNotInResultFile:
-    urllistFile.write(item)
-    urllistFile.write("\n")
-# urllistFileWriter.writerow(UrlNotInResultFile)
-listOfListsNew.append(UrlNotInResultFile)
-multiProc_crawler(listOfListsNew,20)
-if len(UrlNotInResultFile) >20 :
-    multiProc_crawler(listOfListsNew,20)
-else :
-    multiProc_crawler(listOfListsNew,10)
-#APACHE_ACCESS_LOG_PATTERN = '(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(^(2[0-3]|[01]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9]).(\d{6})$)(\t)(^(2[0-3]|[01]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9]).(\d{6})$)'
-# for line in logwr:
-#     match = re.search(APACHE_ACCESS_LOG_PATTERN, line)
-#     if match is None:
-#         logwriter.writerow(row)
-# for line in logwr:
-#     if line[0] not in wordcount:
-#         wordcount.append(line[0])
-# IndexNotInResultFile=list(set(IndexInTop1mFile) - set(wordcount))
-# for item in IndexNotInResultFile:
-#     UrlNotInResultFile.append(get_key_from_value(urlIndexlist,item))
-# for item in UrlNotInResultFile:
-#     urllistFile.write(item)
-#     urllistFile.write("mama")
-#     urllistFile.write("\n")
-logFile.close()
-urllistFile.close()
+def missedUrls():
+    APACHE_ACCESS_LOG_PATTERN ='(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})'
+    wordcount=list()
+    UrlNotInResultFile=list()
+    logwr = open("output6.csv").readlines()
+    newoutput=open("output.csv", "w")
+    urllistFile=open("urllistFile.txt",'wbr+')
+    for idx, line in enumerate(logwr):
+        match = re.search(APACHE_ACCESS_LOG_PATTERN, line)
+        if match is None:
+            logwr.pop(idx)
+        else:
+            newoutput.write(line)
+    newoutput.close()        
+    logFile = codecs.open("output.csv",'rU')
+    IndexNotInResultFile=list()
+    wordcount=set()
+    UrlNotInResultFile=list()
+    listOfListsNew=[]
+    outputReader = csv.reader(logFile,skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL,dialect=csv.excel_tab)
+    for line in outputReader:
+            wordcount.add(line[0])
+    IndexNotInResultFile=list(set(IndexInTop1mFile) - set(wordcount))
+    def get_key_from_value(my_dict, v):
+        for key,value in my_dict.items():
+            if value == v:
+                return key
+        return None
+    for item in IndexNotInResultFile:
+        UrlNotInResultFile.append((item,get_key_from_value(urlIndexlist,item)))
+    for item in UrlNotInResultFile:
+        urllistFile.write(item[1])
+        urllistFile.write("\n")
+    return UrlNotInResultFile
+"""[Author  : Soumya ranjan Parida]
+Function : afterCrawl
+This function can be used to check whether any urls are left for crawling.
+If yes it will again start crawling the websites."""
+def afterCrawl(UrlNotInResultFile):
+    listOfListsNew=makeSublist(UrlNotInResultFile)
+    if len(listOfListsNew) == 0:
+        print "No Urls left for crawling"
+    else:
+        multiProc_crawler(listOfListsNew,listrange)
+    return
+
+#[Som] :These lines used later multiprocessing
+urllist=list()
+missedUrllist=list()
+with open('top-1m.csv') as csvfile:
+    spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+    for row in spamreader:
+        rowValue=', '.join(row)
+        rowValues=rowValue.split(",")
+        urllist.append(rowValues)
+finallist=makeSublist(urllist)
+multiProc_crawler(finallist,listrange)
+missedUrllist=missedUrls()
+afterCrawl(missedUrllist)
+os.remove("output.csv")
+os.remove("urllistFile.txt")
+missedUrllist=missedUrls()
+afterCrawl(missedUrllist)
+missedUrllist=missedUrls()
+timestr = time.strftime("%Y%m%d-%H%M%S")
+filename='output_'+timestr+'.csv'
+os.rename('output6.csv',filename)
+print("--- %s seconds ---" % (time.time() - start_time))
