@@ -2,7 +2,6 @@ import csv
 import multiprocessing as mp
 import Queue
 from alexaCrawl.spiders.alexawebcrawltest import alexaSpider
-from alexaCrawl.spiders.alexawebcrawltest import tags_d
 from scrapy import cmdline
 import codecs
 import re
@@ -20,11 +19,6 @@ listrange=10
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 finallist=list()
-tags_d = defaultdict(int)
-
-#listOfLists=[[] for _ in range(listrange)]
-
-
 
 """[Author  : Soumya ranjan Parida]
 Function : makeSublist
@@ -45,7 +39,6 @@ This function can be used to create multiple spiders
 inside single process"""
 
 def worker(urllist,out_q,i):
-    global tags_d
     cmdline.execute([
     'scrapy', 'crawl', 'alexa',
     '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist)])
@@ -87,7 +80,7 @@ def multiProc_crawler(domainlist,nprocs):
             decrement = True
 
 def missedUrls():
-    APACHE_ACCESS_LOG_PATTERN ='(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})'
+    APACHE_ACCESS_LOG_PATTERN ='(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})'
     wordcount=list()
     UrlNotInResultFile=list()
     logwr = open("output6.csv").readlines()

@@ -4,39 +4,47 @@ from urlparse import urlparse
 from scrapy.http import Request, HtmlResponse
 from scrapy.spider import Spider
 from scrapy.selector import Selector
-from scrapy.contrib.linkextractors import LinkExtractor as sle
 from alexaCrawl.items import Page
 import dns.resolver
 import dns.query
 import dns.flags
 import codecs
 import sys
-# from multiprocessing import Process, Lock
-# from multiprocessing import Process, Value, Lock
-import time
 from datetime import datetime
 import pygeoip
-import Queue
-from scrapy.contrib.linkextractors.lxmlhtml import LxmlLinkExtractor
-from scrapy.http.cookies import CookieJar
 import ast
 from HTMLParser import HTMLParser
 from collections import defaultdict
 import threading
-import urllib
-
+from scrapy.linkextractors.lxmlhtml import LxmlLinkExtractor
 
 list_of_tags=list()
-tags_d = defaultdict(int)
+
 lock = threading.Lock()
 reload(sys)
 sys.setdefaultencoding('utf-8')
+resultFile = codecs.open("output6.csv",'wbr+')
+lock = threading.Lock()
+def write_to_file(wr,value):
+    lock.acquire() # thread blocks at this line until it can obtain lock
+    # in this section, only one thread can be present at a time.
+    wr.writerow(value)
+    lock.release()
+
+def filesize(asset):  
+    wr = csv.writer(resultFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)  
+    write_to_file(wr,asset)
 class MyHTMLParser(HTMLParser):
+    global tags_d
+    global list_of_attributes
+    list_of_attributes=set()
+    tags_d = defaultdict(int)
     def handle_starttag(self, tag, attrs):
         lock.acquire()
         try:
             tags_d[tag] += 1
-            # cdnlistFileWriter.writerow([tag])
+            for attr in attrs:
+                list_of_attributes.add(attr[0])
         finally:
             lock.release()
 
@@ -66,7 +74,7 @@ class alexaSpider(Spider):
     urllist=[]
     urlIndexlist=dict()
     resulturldict=dict()
-    resultFile = codecs.open("output6.csv",'wbr+')
+    #resultFile = codecs.open("output6.csv",'wbr+')
     """[Author:Som ,last modified:16th April 2015]
     def __init__ :this act as constructor for python
     we pass arguments from core.py and those will be 
@@ -81,7 +89,6 @@ class alexaSpider(Spider):
             resulturldict[newurl]=self.urlIndexlist.get(url)    
  
     def start_requests(self):
-        self.link_extractor = sle()
         self.cookies_seen = set()
         i=0
         for url in resulturldict:
@@ -102,9 +109,6 @@ class alexaSpider(Spider):
         global resultFile
         counter=response.meta.get('counter')
         page = self._get_item(response,counter)
-
-        # links = self.link_extractor.extract_links(response)
-        # if link in links :
         depth = page['depth_level']
         depth_value=depth.get('depth')
         if depth_value:
@@ -153,8 +157,6 @@ class alexaSpider(Spider):
         urlList.append(page['start_time'])
         page['end_time']=datetime.now().time()
         urlList.append(page['end_time'])
-        wr = csv.writer(resultFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
-
         newUrlList=[]
         for item in urlList:
             if isinstance(item, unicode):
@@ -166,8 +168,7 @@ class alexaSpider(Spider):
             else:
                 item=item
                 newUrlList.append(item)
-
-        wr.writerow(newUrlList) 
+        filesize(newUrlList)
         return r
 
     """[Author:Som ,last modified:16th April 2015]
@@ -200,52 +201,18 @@ class alexaSpider(Spider):
         sourceCode=response.body
         parser.feed(sourceCode)
         counterValue=counter
-        sites=list()
         for k,v in tags_d.iteritems():
-            siteList=[]
             if isinstance(response, HtmlResponse):
-                if str(k) =='a':
-                    for link in self.link_extractor.extract_links(response):
-                        sites.append(link.url)
-                    if len(sites) > 0 :
-                        for item in sites:
-                            if isinstance(item, unicode):
-                                item=item.encode('utf-8')
-                                siteList.append(item)
-                            else:
-                                siteList.append(item)
-                else:
-                    sites=Selector(response).xpath('//'+str(k)+'/@href').extract()
-                    siteSrc=Selector(response).xpath('//'+str(k)+'/@src').extract()
-                    siteCodebase=Selector(response).xpath('//'+str(k)+'/@codebase').extract()
-                    siteCite=Selector(response).xpath('//'+str(k)+'/@cite').extract()
-                    siteBackGround=Selector(response).xpath('//'+str(k)+'/@background').extract()
-                    siteActiom=Selector(response).xpath('//'+str(k)+'/@action').extract()
-                    siteLongdesc=Selector(response).xpath('//'+str(k)+'/@longdesc').extract()
-                    siteClassid=Selector(response).xpath('//'+str(k)+'/@classid').extract()
-                    siteData=Selector(response).xpath('//'+str(k)+'/@data').extract()
-                    siteUsemap=Selector(response).xpath('//'+str(k)+'/@usemap').extract()
-                    siteForm=Selector(response).xpath('//'+str(k)+'/@formaction').extract()
-                    siteIcon=Selector(response).xpath('//'+str(k)+'/@icon').extract()
-                    sitePoster=Selector(response).xpath('//'+str(k)+'/@poster').extract()
-                    siteArchieve=Selector(response).xpath('//'+str(k)+'/@archive').extract()
-                    siteManifest=Selector(response).xpath('//'+str(k)+'/@manifest').extract()
+                sites=list()
+                siteList=list()
+                if str(k) =='img':
+                    sites=Selector(response).xpath('//img/@src').extract()
                     siteList=getCodedList(sites,siteList)
-                    siteList=getCodedList(siteSrc,siteList)
-                    siteList=getCodedList(siteCodebase,siteList)
-                    siteList=getCodedList(siteCite,siteList)
-                    siteList=getCodedList(siteBackGround,siteList)
-                    siteList=getCodedList(siteActiom,siteList)
-                    siteList=getCodedList(siteLongdesc,siteList)
-                    siteList=getCodedList(siteClassid,siteList)
-                    siteList=getCodedList(siteData,siteList)
-                    siteList=getCodedList(siteUsemap,siteList)
-                    siteList=getCodedList(siteForm,siteList)
-                    siteList=getCodedList(siteIcon,siteList)
-                    siteList=getCodedList(sitePoster,siteList)
-                    siteList=getCodedList(siteArchieve,siteList)
-                    siteList=getCodedList(siteManifest,siteList)
-            r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': str(k),'download_timeout':3})for site in siteList if site.startswith("http://") or site.startswith("https://") or site.startswith("www."))            
+                else:
+                    for link in LxmlLinkExtractor(tags=str(k),attrs=list_of_attributes).extract_links(response):
+                        sites.append(link.url) 
+                    siteList=getCodedList(sites,siteList)
+                r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': str(k),'download_timeout':3})for site in siteList if site.startswith("http://") or site.startswith("https://") or site.startswith("www."))
         return r        
     #@profile
     def _extract_object_count(siteList):
@@ -269,24 +236,9 @@ class alexaSpider(Spider):
                 page['title'] = title[0]
 
     """[Author:Som ,last modified:16th April 2015]
-    def _set_http_header_info:used to crawl response status of
-    any website like 200 : ok ,404 :not found etc.
-
-    @returns responseStatus
-    """
-    # def _set_http_header_info(self, page, response):
-    #     if isinstance(response, HtmlResponse):
-    #         responseStatus = response.status
-    #         #print "responseStatus",responseStatus
-    #         if responseStatus:
-    #             page['httpResponseStatus']=responseStatus
-    #         else :
-    #             page['httpResponseStatus']="-"
-    """[Author:Som ,last modified:16th April 2015]
     def _set_new_cookies:used to crawl cookies of
     any website.
     """
-    #@profile
     def _set_new_cookies(self, page, response): 
         cookies = []
         for cookie in [x.split(';', 1)[0] for x in response.headers.getlist('Set-Cookie')]:
@@ -301,12 +253,8 @@ class alexaSpider(Spider):
     """[Author:Som ,last modified:22th April 2015]
         def _set_DNS_info:used to retrieve CNAME chain.
     """
-    #@profile
     def _set_DNS_info(self, page,response):
-        # start_time = time.clock()
         CNAMEList=set()
-        # dest_server_ip=[]
-        # dest_ASN=[]
         dest_server_ip[:] = []
         dest_ASN[:]=[]
         domain=response.url
@@ -350,14 +298,8 @@ class alexaSpider(Spider):
                 try:
                     if not str(ip_address) in dest_server_ip:
                          dest_server_ip.append(str(ip_address))
-                    #asn_info=IPWhois(str(IPs))
                     gir = pygeoip.GeoIP('GeoIPASNum.dat',
                        flags=pygeoip.const.GEOIP_STANDARD)
-                    #gi.asn_by_name(IPs)
-                    # if str(ip_address):
-                    #     dest_ASN.append(str(ip_address))
-                    # else:
-                    #     dest_ASN.append('-')
                     asNum=gir.asn_by_name(str(ip_address))
                     if asNum:
                         asNumSplit=asNum.split(' ')
@@ -367,19 +309,6 @@ class alexaSpider(Spider):
                     else:
                         dest_ASN.append('-')
 
-                    
-                    # if isinstance(asn_info, unicode):
-                    #     asn_info=asn_info.encode('utf-8')
-                    
-                    # try:
-                    #     results = asn_info.lookup()
-                    #     if not results['asn'] in dest_ASN: 
-                    #         dest_ASN.append(results['asn'])
-                    # except:
-                    #     dest_ASN.append('-')
-                    #mydict.keys()[mydict.values().index(16)]
-                    
-                    #dest_ASN.append(results)
                 except dns.resolver.NXDOMAIN:
                     continue
                 except dns.resolver.Timeout:
@@ -404,22 +333,13 @@ class alexaSpider(Spider):
             else:
                 page['destIP']='-'
         except dns.resolver.NXDOMAIN:
-            # CNAME.append('NONE')
-            # page['CNAMEChain']=CNAME 
-            page['CNAMEChain']="-"   
-            #page['destIP']='-'    
+            page['CNAMEChain']="-"     
         except dns.resolver.Timeout:
             page['CNAMEChain']="-"
-            #page['destIP']='-'
         except dns.exception.DNSException:
             page['CNAMEChain']="-"
-            #page['destIP']='-'
         except dns.resolver.NoAnswer:
             page['CNAMEChain']="-"
-            #page['destIP']='-'
-        # dns_lookup_time=dns_lookup_time+(time.clock() -start_time)
-        # print dns_lookup_time, "dns"
-    #@profile
     def getsecondleveldomain(url):
         with open("effective_tld_names.dat") as tld_file:
             tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
