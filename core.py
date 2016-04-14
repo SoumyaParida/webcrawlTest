@@ -15,7 +15,7 @@ rowValues=[]
 listOfLists=[]
 urlIndexlist=dict()
 
-listrange=10
+listrange=20
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 finallist=list()
