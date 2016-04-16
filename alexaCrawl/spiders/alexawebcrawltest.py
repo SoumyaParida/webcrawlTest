@@ -22,7 +22,9 @@ list_of_tags=list()
 
 lock = threading.Lock()
 reload(sys)
-sys.setdefaultencoding('utf-8')
+#sys.setdefaultencoding('utf-8')
+sys.setdefaultencoding("utf-8")
+
 resultFile = codecs.open("output6.csv",'wbr+')
 lock = threading.Lock()
 def write_to_file(wr,value):
@@ -35,16 +37,16 @@ def filesize(asset):
     wr = csv.writer(resultFile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)  
     write_to_file(wr,asset)
 class MyHTMLParser(HTMLParser):
-    global tags_d
-    global list_of_attributes
-    list_of_attributes=set()
-    tags_d = defaultdict(int)
+
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.tags_d = defaultdict(int)
+        self.list_of_attributes = set()
+
     def handle_starttag(self, tag, attrs):
         lock.acquire()
         try:
-            tags_d[tag] += 1
-            for attr in attrs:
-                list_of_attributes.add(attr[0])
+            self.tags_d[tag] += 1
         finally:
             lock.release()
 
@@ -52,7 +54,7 @@ def getCodedList(sites,siteList):
     if len(sites) > 0 :
         for item in sites:
             if isinstance(item, unicode):
-                item=item.encode('utf-8')
+                item=item.decode('latin-1').encode('utf-8')
                 siteList.append(item)
             else:
                 siteList.append(item)
@@ -65,6 +67,7 @@ class alexaSpider(Spider):
     global tagType
     global dest_server_ip
     global _extract_object_count
+    global _distinctASN
     global getsecondleveldomain
     global dest_ASN    
     global urllist
@@ -127,6 +130,10 @@ class alexaSpider(Spider):
             page['tagType']='a'
 
         r = [page]
+        page['InternalObjectCount'] = 0
+        page['ExternalObjectCount'] = 0
+        page['NumberOfuniqueExternalSecondlevelSites'] = 0
+        page['distinctASNs'] = 0
         r.extend(self._extract_requests(response,tagType,counter,page)) #external site link
 
         urlList.append(page['index'])
@@ -154,13 +161,17 @@ class alexaSpider(Spider):
             page['ASN_Number']='-'
 
         urlList.append(page['ASN_Number'])
+        urlList.append(page['distinctASNs'])
+        urlList.append(page['InternalObjectCount'])
+        urlList.append(page['ExternalObjectCount'])
+        urlList.append(page['NumberOfuniqueExternalSecondlevelSites'])
         urlList.append(page['start_time'])
         page['end_time']=datetime.now().time()
         urlList.append(page['end_time'])
         newUrlList=[]
         for item in urlList:
             if isinstance(item, unicode):
-                item=item.encode('utf-8')
+                item=item.decode('latin-1').encode('utf-8')
                 newUrlList.append(item)
             elif isinstance(item,str):
                 item=item
@@ -201,7 +212,14 @@ class alexaSpider(Spider):
         sourceCode=response.body
         parser.feed(sourceCode)
         counterValue=counter
-        for k,v in tags_d.iteritems():
+        internalSites=0
+        externalSites=0
+        uniqueSecondlevelSites=set()
+        distinctAsn=set()
+        Asnlist=set()
+
+        list_of_attri=['href','src','action','cite','code','codebase','data','manifest','poster','background','longdesc','profile','usemap','classid','formaction','icon']
+        for k,v in parser.tags_d.iteritems():
             if isinstance(response, HtmlResponse):
                 sites=list()
                 siteList=list()
@@ -209,11 +227,37 @@ class alexaSpider(Spider):
                     sites=Selector(response).xpath('//img/@src').extract()
                     siteList=getCodedList(sites,siteList)
                 else:
-                    for link in LxmlLinkExtractor(tags=str(k),attrs=list_of_attributes).extract_links(response):
+                    for link in LxmlLinkExtractor(deny_extensions=['exe'],tags=str(k),attrs=list_of_attri).extract_links(response):
                         sites.append(link.url) 
                     siteList=getCodedList(sites,siteList)
+                externalObjectCount, InternalObjectCount, NumberOfuniqueExternalSecondlevelSites = _extract_object_count(siteList)
+                Asnlist= _distinctASN(siteList)
+                distinctAsn = distinctAsn | Asnlist
+                internalSites=internalSites+InternalObjectCount
+                externalSites=externalSites+externalObjectCount
+                uniqueSecondlevelSites=uniqueSecondlevelSites | NumberOfuniqueExternalSecondlevelSites
+
                 r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': str(k),'download_timeout':3})for site in siteList if site.startswith("http://") or site.startswith("https://") or site.startswith("www."))
-        return r        
+        if int(externalSites) > 0:
+            page['ExternalObjectCount'] = externalSites
+        else:
+            page['ExternalObjectCount'] = 0
+
+        if int(internalSites) > 0:
+            page['InternalObjectCount'] = internalSites
+        else:
+            page['InternalObjectCount'] = 0
+
+        if len(uniqueSecondlevelSites) > 0:
+            page['NumberOfuniqueExternalSecondlevelSites'] = len(uniqueSecondlevelSites)
+        else:
+            page['NumberOfuniqueExternalSecondlevelSites'] = 0
+
+        if len(distinctAsn) > 0:
+            page['distinctASNs'] = len(distinctAsn)
+        else:
+            page['distinctASNs'] = 0
+        return r   
     #@profile
     def _extract_object_count(siteList):
         InternalSitesCount=0
@@ -227,7 +271,43 @@ class alexaSpider(Spider):
                 externalSites.append(site)
             else:
                 InternalSitesCount+=1
-        return (externalSitesCount,InternalSitesCount,len(uniqueExternalSites),externalSites,uniqueExternalSites)
+        return (externalSitesCount,InternalSitesCount,uniqueExternalSites)
+
+    def _distinctASN(weblinks):
+        destASNValues=set()
+        for site in weblinks:
+            domain = urlparse(site).netloc
+            if domain.startswith('http://'):
+                domain = domain.replace("http://", "", 1)
+            elif domain.startswith('https://'):
+                domain = domain.replace("https://", "", 1)
+
+            if domain.endswith('/'):
+                domain = domain.replace("/", "", 1)
+
+            if not domain.startswith('www.'):
+                domain = 'www.%s' % domain
+            try:
+                destServ = dns.resolver.query(domain, 'A')
+                for ip_address in destServ:
+                        gir = pygeoip.GeoIP('GeoIPASNum.dat',flags=pygeoip.const.GEOIP_STANDARD)
+                        asNum = gir.asn_by_name(str(ip_address))
+                        if asNum:
+                            asNumSplit = asNum.split(' ')
+                            asn = ''.join(x for x in asNumSplit[0] if x.isdigit())
+                            if not asn in destASNValues:
+                                destASNValues.add(asn)
+                        else:
+                            destASNValues.add('-')
+            except dns.resolver.NXDOMAIN:
+                continue
+            except dns.resolver.Timeout:
+                continue
+            except dns.exception.DNSException:
+                continue
+            except dns.resolver.NoAnswer:
+                continue
+        return destASNValues
     #@profile
     def _set_title(self, page, response):
         if isinstance(response, HtmlResponse):
@@ -254,92 +334,70 @@ class alexaSpider(Spider):
         def _set_DNS_info:used to retrieve CNAME chain.
     """
     def _set_DNS_info(self, page,response):
-        CNAMEList=set()
+        CNAMEList = set()
         dest_server_ip[:] = []
         dest_ASN[:]=[]
-        domain=response.url
+        domain = response.url
         global dns_lookup_time
-        #urlparse :This module defines a standard interface to break URL strings up 
-        #in components (addressing scheme, network location, path etc.), to combine
-        #the components back into a URL string, and to convert a relative URL to 
-        #an absolute URL given a base URL.
-        domain=urlparse(domain).netloc
+        # urlparse :This module defines a standard interface to break URL strings up
+        # in components (addressing scheme, network location, path etc.), to combine
+        # the components back into a URL string, and to convert a relative URL to
+        # an absolute URL given a base URL.
+        domain = urlparse(domain).netloc
         if domain.startswith('http://'):
-            domain=domain.replace("http://","",1)
+            domain = domain.replace("http://", "", 1)
         elif domain.startswith('https://'):
-            domain=domain.replace("https://","",1)
+            domain = domain.replace("https://", "", 1)
 
         if domain.endswith('/'):
-            domain=domain.replace("/","",1)
-
-        if not domain.startswith('www.'):
-            domain = 'www.%s' % domain
+            domain = domain.replace("/", "", 1)
         try:
-            answers = dns.resolver.query(domain, 'CNAME')
-            destServerIPs = dns.resolver.query(domain, 'A')
-            #page['destIP']='1'
-            for rdata in answers:
-                try:
-                    CNAMEList.add(str(rdata))
-                    while (rdata.target):
-                        value=dns.resolver.query(rdata.target, 'CNAME')
-                        for rdata in value:
-                            CNAMEList.add(str(rdata))
-                except dns.resolver.NXDOMAIN:
-                    continue
-                except dns.resolver.Timeout:
-                    continue
-                except dns.exception.DNSException:
-                    continue
-                except dns.resolver.NoAnswer:
-                    continue
+            answer = dns.resolver.query(domain)
+            value = str(answer.response)
+            list_of_words = value.split()
+            target = "CNAME"
+            for i, w in enumerate(list_of_words):
+                if w == target:
+                    # next word
+                    CNAMEList.add(list_of_words[i + 1])
+            for data in answer:
+                dest_server_ip.append(str(data))
+                gir = pygeoip.GeoIP('GeoIPASNum.dat',flags=pygeoip.const.GEOIP_STANDARD)
 
-            for ip_address in destServerIPs:
-                try:
-                    if not str(ip_address) in dest_server_ip:
-                         dest_server_ip.append(str(ip_address))
-                    gir = pygeoip.GeoIP('GeoIPASNum.dat',
-                       flags=pygeoip.const.GEOIP_STANDARD)
-                    asNum=gir.asn_by_name(str(ip_address))
-                    if asNum:
-                        asNumSplit=asNum.split(' ')
-                        asn=''.join(x for x in asNumSplit[0] if x.isdigit())
-                        if not asn in dest_ASN:
-                            dest_ASN.append(asn)
-                    else:
-                        dest_ASN.append('-')
+                asNum = gir.asn_by_name(str(data))
+                if asNum:
+                    asNumSplit = asNum.split(' ')
+                    asn = ''.join(x for x in asNumSplit[0] if x.isdigit())
+                    if not asn in dest_ASN:
+                        dest_ASN.append(asn)
 
-                except dns.resolver.NXDOMAIN:
-                    continue
-                except dns.resolver.Timeout:
-                    continue
-                except dns.exception.DNSException:
-                    continue
-                except dns.resolver.NoAnswer:
-                    continue
-
-            if dest_ASN:
-                page['ASN_Number']=dest_ASN
+            if len(dest_ASN) >0:
+                page['ASN_Number'] = dest_ASN
             else:
-                page['ASN_Number']='-'
+                page['ASN_Number'] = '-'
 
-            if CNAMEList:
-                page['CNAMEChain']=CNAMEList
+            if len(CNAMEList) >0:
+                page['CNAMEChain'] = CNAMEList
             else:
-                page['CNAMEChain']="-"
+                page['CNAMEChain'] = "-"
 
-            if dest_server_ip:
-                page['destIP']=dest_server_ip
+            if len(dest_server_ip) >0:
+                page['destIP'] = dest_server_ip
             else:
-                page['destIP']='-'
+                page['destIP'] = '-'
         except dns.resolver.NXDOMAIN:
-            page['CNAMEChain']="-"     
+            # CNAME.append('NONE')
+            # page['CNAMEChain']=CNAME
+            page['CNAMEChain'] = "-"
+            # page['destIP']='-'
         except dns.resolver.Timeout:
-            page['CNAMEChain']="-"
+            page['CNAMEChain'] = "-"
+            # page['destIP']='-'
         except dns.exception.DNSException:
-            page['CNAMEChain']="-"
+            page['CNAMEChain'] = "-"
+            # page['destIP']='-'
         except dns.resolver.NoAnswer:
-            page['CNAMEChain']="-"
+            page['CNAMEChain'] = "-"
     def getsecondleveldomain(url):
         with open("effective_tld_names.dat") as tld_file:
             tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
