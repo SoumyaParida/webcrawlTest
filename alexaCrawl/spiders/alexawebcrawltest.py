@@ -16,7 +16,7 @@ import ast
 from HTMLParser import HTMLParser
 from collections import defaultdict
 import threading
-from scrapy.linkextractors.lxmlhtml import LxmlLinkExtractor
+from scrapy.contrib.linkextractors.lxmlhtml import LxmlLinkExtractor
 
 list_of_tags=list()
 
