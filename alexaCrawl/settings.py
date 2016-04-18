@@ -21,6 +21,8 @@ ITEM_PIPELINES = {
     'alexaCrawl.pipelines.AlexacrawlPipeline': 800
 }
 
+DOWNLOADER_CLIENTCONTEXTFACTORY = 'alexaCrawl.contextfactory.CustomContextFactory'
+
 DUPEFILTER_CLASS = 'scrapy.dupefilter.RFPDupeFilter'
 DUPEFILTER_DEBUG = True
 

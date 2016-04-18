@@ -210,6 +210,7 @@ class alexaSpider(Spider):
         counterValue=counter
         parser = MyHTMLParser()
         sourceCode=response.body
+        sourceCode=sourceCode.decode('latin-1').encode('utf-8')
         parser.feed(sourceCode)
         counterValue=counter
         internalSites=0
@@ -237,7 +238,7 @@ class alexaSpider(Spider):
                 externalSites=externalSites+externalObjectCount
                 uniqueSecondlevelSites=uniqueSecondlevelSites | NumberOfuniqueExternalSecondlevelSites
 
-                r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': str(k),'download_timeout':3})for site in siteList if site.startswith("http://") or site.startswith("https://") or site.startswith("www."))
+                r.extend(Request(site, callback=self.parse,method='HEAD',meta={'counter': counterValue,'tagType': str(k),'download_timeout':15})for site in siteList if site.startswith("http://") or site.startswith("https://") or site.startswith("www."))
         if int(externalSites) > 0:
             page['ExternalObjectCount'] = externalSites
         else:
