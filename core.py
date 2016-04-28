@@ -9,11 +9,13 @@ import sys
 import time
 import os
 from collections import defaultdict
+from shutil import copyfile
 
 start_time = time.time()
 rowValues=[]
 listOfLists=[]
 urlIndexlist=dict()
+urlIndexdict=dict()
 
 listrange=20
 IndexInTop1mFile=list()
@@ -29,6 +31,7 @@ def makeSublist(urllist):
     listOfLists=[[] for _ in range(listrange)]
     for rowValues in urllist:
         urlIndexlist[rowValues[1]]=rowValues[0]
+        urlIndexdict[rowValues[0]]=rowValues[1]
         IndexInTop1mFile.append(rowValues[0])
         listOfLists[(int(rowValues[0]) - 1) % listrange].append(rowValues[1])
     return listOfLists
@@ -83,17 +86,21 @@ def missedUrls():
     APACHE_ACCESS_LOG_PATTERN ='(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})'
     wordcount=list()
     UrlNotInResultFile=list()
-    logwr = open("output6.csv").readlines()
-    newoutput=open("output.csv", "w")
+    #os.rename('output6.csv','final.csv')
+    copyfile('output6.csv','final.csv')
+    logwr = open("final.csv").readlines()
+    newoutput=open("finalcheckCopy.csv", "w")
     urllistFile=open("urllistFile.txt",'wbr+')
+    print "Reading files start"
     for idx, line in enumerate(logwr):
         match = re.search(APACHE_ACCESS_LOG_PATTERN, line)
         if match is None:
             logwr.pop(idx)
         else:
             newoutput.write(line)
-    newoutput.close()        
-    logFile = codecs.open("output.csv",'rU')
+    newoutput.close()
+    print "Reading files over"      
+    logFile = codecs.open("finalcheckCopy.csv",'rU')
     IndexNotInResultFile=list()
     wordcount=set()
     UrlNotInResultFile=list()
@@ -102,13 +109,14 @@ def missedUrls():
     for line in outputReader:
             wordcount.add(line[0])
     IndexNotInResultFile=list(set(IndexInTop1mFile) - set(wordcount))
+    print "get_key_from_value start"
     def get_key_from_value(my_dict, v):
-        for key,value in my_dict.items():
-            if value == v:
-                return key
-        return None
-    for item in IndexNotInResultFile:
-        UrlNotInResultFile.append((item,get_key_from_value(urlIndexlist,item)))
+        return my_dict.get(v)
+    if len(IndexNotInResultFile) > 0:
+        for item in IndexNotInResultFile:
+            url=get_key_from_value(urlIndexdict,item)
+            UrlNotInResultFile.append((item,url))
+    print "get_key_from_value end"
     for item in UrlNotInResultFile:
         urllistFile.write(item[1])
         urllistFile.write("\n")
@@ -138,7 +146,7 @@ while True:
   finallist=makeSublist(urllist)
   multiProc_crawler(finallist,listrange)
   missedUrllist=missedUrls()
-  if len(missedUrllist) <= 1:
+  if len(missedUrllist) <= 1000:
     break
   urllist=missedUrllist
 
