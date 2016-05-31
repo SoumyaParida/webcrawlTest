@@ -138,6 +138,17 @@ with open('top-100.csv') as csvfile:
         urllist.append(rowValues)
 finallist=makeSublist(urllist)
 multiProc_crawler(finallist,listrange)
+
+os.remove("final.csv")
+fout=open("final.csv","a")
+for num in xrange(listrange):
+    for line in open("output"+str(num)+".csv"):
+         fout.write(line)    
+fout.close()
+import os, glob
+for filename in glob.glob("output*"):
+    os.remove(filename)
+
 # missedUrllist=missedUrls()
 # afterCrawl(missedUrllist)
 # os.remove("output.csv")
