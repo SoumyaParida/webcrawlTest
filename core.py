@@ -2,7 +2,6 @@ import csv
 import multiprocessing as mp
 import Queue
 from alexaCrawl.spiders.alexawebcrawltest import alexaSpider
-from alexaCrawl.spiders.alexawebcrawltest import tags_d
 from scrapy import cmdline
 import codecs
 import re
@@ -16,15 +15,11 @@ rowValues=[]
 listOfLists=[]
 urlIndexlist=dict()
 
-listrange=10
+listrange=5
 IndexInTop1mFile=list()
 IndexNotInResultFile=list()
 finallist=list()
-tags_d = defaultdict(int)
-
-#listOfLists=[[] for _ in range(listrange)]
-
-
+urlIndexdict=dict()
 
 """[Author  : Soumya ranjan Parida]
 Function : makeSublist
@@ -35,6 +30,7 @@ def makeSublist(urllist):
     listOfLists=[[] for _ in range(listrange)]
     for rowValues in urllist:
         urlIndexlist[rowValues[1]]=rowValues[0]
+        urlIndexdict[rowValues[0]]=rowValues[1]
         IndexInTop1mFile.append(rowValues[0])
         listOfLists[(int(rowValues[0]) - 1) % listrange].append(rowValues[1])
     return listOfLists
@@ -45,10 +41,9 @@ This function can be used to create multiple spiders
 inside single process"""
 
 def worker(urllist,out_q,i):
-    global tags_d
     cmdline.execute([
     'scrapy', 'crawl', 'alexa',
-    '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist)])
+    '-a', 'arg1='+str(urllist), '-a', 'arg2='+str(urlIndexlist), '-a', 'arg3='+str(i)])
     return
 
 
@@ -87,7 +82,7 @@ def multiProc_crawler(domainlist,nprocs):
             decrement = True
 
 def missedUrls():
-    APACHE_ACCESS_LOG_PATTERN ='(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})'
+    APACHE_ACCESS_LOG_PATTERN ='(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})'
     wordcount=list()
     UrlNotInResultFile=list()
     logwr = open("output6.csv").readlines()
@@ -135,7 +130,7 @@ def afterCrawl(UrlNotInResultFile):
 #[Som] :These lines used later multiprocessing
 urllist=list()
 missedUrllist=list()
-with open('top-1m.csv') as csvfile:
+with open('top-100.csv') as csvfile:
     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
     for row in spamreader:
         rowValue=', '.join(row)
@@ -143,14 +138,14 @@ with open('top-1m.csv') as csvfile:
         urllist.append(rowValues)
 finallist=makeSublist(urllist)
 multiProc_crawler(finallist,listrange)
-missedUrllist=missedUrls()
-afterCrawl(missedUrllist)
-os.remove("output.csv")
-os.remove("urllistFile.txt")
-missedUrllist=missedUrls()
-afterCrawl(missedUrllist)
-missedUrllist=missedUrls()
-timestr = time.strftime("%Y%m%d-%H%M%S")
-filename='output_'+timestr+'.csv'
-os.rename('output6.csv',filename)
+# missedUrllist=missedUrls()
+# afterCrawl(missedUrllist)
+# os.remove("output.csv")
+# os.remove("urllistFile.txt")
+# missedUrllist=missedUrls()
+# afterCrawl(missedUrllist)
+# missedUrllist=missedUrls()
+# timestr = time.strftime("%Y%m%d-%H%M%S")
+# filename='output_'+timestr+'.csv'
+# os.rename('output6.csv',filename)
 print("--- %s seconds ---" % (time.time() - start_time))

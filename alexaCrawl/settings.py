@@ -21,8 +21,10 @@ ITEM_PIPELINES = {
     'alexaCrawl.pipelines.AlexacrawlPipeline': 800
 }
 
+DOWNLOADER_CLIENTCONTEXTFACTORY = 'alexaCrawl.contextFactory.CustomContextFactory'
+
 DUPEFILTER_CLASS = 'scrapy.dupefilter.RFPDupeFilter'
-DUPEFILTER_DEBUG = True
+#DUPEFILTER_DEBUG = True
 
 REDIRECT_ENABLED = True
 RETRY_ENABLED = False
@@ -43,9 +45,13 @@ CONCURRENT_REQUESTS_BY_DOMAIN=50
 
 DOWNLOAD_TIMEOUT = 15
 AJAXCRAWL_ENABLED = True
+DNSCACHE_ENABLED=True
+#LOG_ENABLED = False
+#DNS_TIMEOUT=5
 # DOWNLOAD_MAXSIZE = 10741824
-# DOWNLOAD_DELAY = 0.1 # 250 ms of delay
-
+#DOWNLOAD_DELAY = 0.1 # 250 ms of delay
+#DOWNLOAD_TIMEOUT=5
+#STATS_DUMP=False
 #settings.overrides['DOWNLOADER_MIDDLEWARES'] = {'seerspider.SpiderFailSignal': 901}
 
 #RETRY_ENABLED=False
