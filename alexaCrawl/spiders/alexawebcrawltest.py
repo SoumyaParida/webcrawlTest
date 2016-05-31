@@ -65,7 +65,7 @@ class alexaSpider(Spider):
     # global counter
     global resultFile
     global tagType
-    global dest_server_ip
+    #global dest_server_ip
     global _extract_object_count
     global _distinctASN
     global getsecondleveldomain
@@ -73,7 +73,7 @@ class alexaSpider(Spider):
     global urllist
     global resulturldict   
     dest_ASN=[]
-    dest_server_ip=[]
+    #dest_server_ip=[]
     urllist=[]
     urlIndexlist=dict()
     resulturldict=dict()
@@ -147,20 +147,10 @@ class alexaSpider(Spider):
         urlList.append(page['tagType'])
         cname=';'.join(page['CNAMEChain'])
         urlList.append(cname)
-        dest_server_ip_values=';'.join(dest_server_ip)
-        if dest_server_ip_values:
-            page['destIP']=dest_server_ip_values
-        else:
-            page['destIP']='-'
-
-        urlList.append(page['destIP'])
-        asn_no=';'.join(dest_ASN)
-        if asn_no:
-            page['ASN_Number']=asn_no
-        else :
-            page['ASN_Number']='-'
-
-        urlList.append(page['ASN_Number'])
+        dest_server_ip_values=';'.join(page['destIP'])
+        urlList.append(dest_server_ip_values)
+        asn_no=';'.join(page['ASN_Number'])
+        urlList.append(asn_no)
         urlList.append(page['distinctASNs'])
         urlList.append(page['InternalObjectCount'])
         urlList.append(page['ExternalObjectCount'])
@@ -218,7 +208,6 @@ class alexaSpider(Spider):
         uniqueSecondlevelSites=set()
         distinctAsn=set()
         Asnlist=set()
-
         list_of_attri=['href','src','action','cite','code','codebase','data','manifest','poster','background','longdesc','profile','usemap','formaction','icon']
         for k,v in parser.tags_d.iteritems():
             if isinstance(response, HtmlResponse):
@@ -336,7 +325,8 @@ class alexaSpider(Spider):
     """
     def _set_DNS_info(self, page,response):
         CNAMEList = set()
-        dest_server_ip[:] = []
+        dest_server_ip=set()
+        #dest_server_ip[:] = []
         dest_ASN[:]=[]
         domain = response.url
         global dns_lookup_time
@@ -353,24 +343,39 @@ class alexaSpider(Spider):
         if domain.endswith('/'):
             domain = domain.replace("/", "", 1)
         try:
-            answer = dns.resolver.query(domain)
-            value = str(answer.response)
-            list_of_words = value.split()
-            target = "CNAME"
-            for i, w in enumerate(list_of_words):
-                if w == target:
-                    # next word
-                    CNAMEList.add(list_of_words[i + 1])
-            for data in answer:
-                dest_server_ip.append(str(data))
-                gir = pygeoip.GeoIP('GeoIPASNum.dat',flags=pygeoip.const.GEOIP_STANDARD)
+            #answer = dns.resolver.query(domain,"A")
+            #print answer.response
+            myResolver = dns.resolver.Resolver()
+            myAnswers = myResolver.query(domain, "A")
+            value = str(myAnswers.response).splitlines()
+            #print value
 
-                asNum = gir.asn_by_name(str(data))
-                if asNum:
-                    asNumSplit = asNum.split(' ')
-                    asn = ''.join(x for x in asNumSplit[0] if x.isdigit())
-                    if not asn in dest_ASN:
-                        dest_ASN.append(asn)
+            for item in value:
+                if "IN A" in item:
+                    ip=str(item.split("IN A")[1])
+                    if ip:
+                        CNAMEList.add(item.split(' ')[0].strip())
+                        dest_server_ip.add(str(ip).strip())
+                        gir = pygeoip.GeoIP('GeoIPASNum.dat',flags=pygeoip.const.GEOIP_STANDARD)
+                        asNum = gir.asn_by_name(str(ip))
+                        if asNum:
+                            asNumSplit = asNum.split(' ')
+                            asn = ''.join(x for x in asNumSplit[0] if x.isdigit())
+                            if not asn in dest_ASN:
+                                dest_ASN.append(asn)
+            #print value
+            # for rdata in myAnswers: #for each response
+            #     print rdata #print the data
+            # for data in myAnswers:
+            #     dest_server_ip.append(str(data))
+            #     gir = pygeoip.GeoIP('GeoIPASNum.dat',flags=pygeoip.const.GEOIP_STANDARD)
+
+            #     asNum = gir.asn_by_name(str(data))
+            #     if asNum:
+            #         asNumSplit = asNum.split(' ')
+            #         asn = ''.join(x for x in asNumSplit[0] if x.isdigit())
+            #         if not asn in dest_ASN:
+            #             dest_ASN.append(asn)
 
             if len(dest_ASN) >0:
                 page['ASN_Number'] = dest_ASN
@@ -387,18 +392,21 @@ class alexaSpider(Spider):
             else:
                 page['destIP'] = '-'
         except dns.resolver.NXDOMAIN:
-            # CNAME.append('NONE')
-            # page['CNAMEChain']=CNAME
             page['CNAMEChain'] = "-"
-            # page['destIP']='-'
+            page['destIP']= "-"
+            page['ASN_Number']= "-"
         except dns.resolver.Timeout:
             page['CNAMEChain'] = "-"
-            # page['destIP']='-'
+            page['destIP']= "-"
+            page['ASN_Number']= "-"
         except dns.exception.DNSException:
             page['CNAMEChain'] = "-"
-            # page['destIP']='-'
+            page['destIP']= "-"
+            page['ASN_Number']= "-"
         except dns.resolver.NoAnswer:
             page['CNAMEChain'] = "-"
+            page['destIP']= "-"
+            page['ASN_Number']= "-"
     def getsecondleveldomain(url):
         with open("effective_tld_names.dat") as tld_file:
             tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
