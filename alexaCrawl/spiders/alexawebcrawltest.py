@@ -208,7 +208,7 @@ class alexaSpider(Spider):
         uniqueSecondlevelSites=set()
         distinctAsn=set()
         Asnlist=set()
-        list_of_attri=['href','src','action','cite','code','codebase','data','manifest','poster','background','longdesc','profile','usemap','formaction','icon']
+        list_of_attri=['href','src','action','data','poster','background','icon']
         for k,v in parser.tags_d.iteritems():
             if isinstance(response, HtmlResponse):
                 sites=list()
