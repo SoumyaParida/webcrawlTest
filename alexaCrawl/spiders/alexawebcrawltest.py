@@ -175,7 +175,6 @@ class alexaSpider(Spider):
     """[Author:Som ,last modified:16th April 2015]
     def _get_item:used to crawl items.
     Future requiremnets (items) will be passed here.
-
     @returns item
     @scrapes title which will stored in csv file
     """
@@ -189,7 +188,6 @@ class alexaSpider(Spider):
 
     """[Author:Som ,last modified:16th April 2015]
     def _extract_requests:used to crawl urls.
-
     @returns urls
     """
 
@@ -324,8 +322,8 @@ class alexaSpider(Spider):
         def _set_DNS_info:used to retrieve CNAME chain.
     """
     def _set_DNS_info(self, page,response):
-        CNAMEList = set()
-        dest_server_ip=set()
+        CNAMEList = list()
+        dest_server_ip=list()
         #dest_server_ip[:] = []
         dest_ASN[:]=[]
         domain = response.url
@@ -354,8 +352,17 @@ class alexaSpider(Spider):
                 if "IN A" in item:
                     ip=str(item.split("IN A")[1])
                     if ip:
-                        CNAMEList.add(item.split(' ')[0].strip())
-                        dest_server_ip.add(str(ip).strip())
+                        domain=item.split(' ')[0].strip()
+                        domain=domain.lower()  
+                        if domain.startswith('www.'):
+                            domain = domain.replace("www","")
+                        if domain.endswith('.'):
+                            domain=domain[:-1]
+                        if not domain.startswith('http://'):
+                            domain = 'http://%s' % domain
+                        secondlevelurl=str(getsecondleveldomain(domain))
+                        CNAMEList.append(secondlevelurl)
+                        dest_server_ip.append(str(ip).strip())
                         gir = pygeoip.GeoIP('GeoIPASNum.dat',flags=pygeoip.const.GEOIP_STANDARD)
                         asNum = gir.asn_by_name(str(ip))
                         if asNum:
@@ -363,20 +370,6 @@ class alexaSpider(Spider):
                             asn = ''.join(x for x in asNumSplit[0] if x.isdigit())
                             if not asn in dest_ASN:
                                 dest_ASN.append(asn)
-            #print value
-            # for rdata in myAnswers: #for each response
-            #     print rdata #print the data
-            # for data in myAnswers:
-            #     dest_server_ip.append(str(data))
-            #     gir = pygeoip.GeoIP('GeoIPASNum.dat',flags=pygeoip.const.GEOIP_STANDARD)
-
-            #     asNum = gir.asn_by_name(str(data))
-            #     if asNum:
-            #         asNumSplit = asNum.split(' ')
-            #         asn = ''.join(x for x in asNumSplit[0] if x.isdigit())
-            #         if not asn in dest_ASN:
-            #             dest_ASN.append(asn)
-
             if len(dest_ASN) >0:
                 page['ASN_Number'] = dest_ASN
             else:

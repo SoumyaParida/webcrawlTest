@@ -125,41 +125,20 @@ def missedUrls():
 Function : afterCrawl
 This function can be used to check whether any urls are left for crawling.
 If yes it will again start crawling the websites."""
-# def afterCrawl(UrlNotInResultFile):
-#     listOfListsNew=makeSublist(UrlNotInResultFile)
-#     if len(listOfListsNew) == 0:
-#         print "No Urls left for crawling"
-#     else:
-#         multiProc_crawler(listOfListsNew,listrange)
-#     return
 
 #[Som] :These lines used later multiprocessing
 urllist=list()
 missedUrllist=list()
+execCrawl=0
 with open('top-1m.csv') as csvfile:
     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
     for row in spamreader:
         rowValue=', '.join(row)
         rowValues=rowValue.split(",")
         urllist.append(rowValues)
-while True:
+while execCrawl < 3:
   finallist=makeSublist(urllist)
   multiProc_crawler(finallist,listrange)
-  missedUrllist=missedUrls()
-  if len(missedUrllist) <= 1000:
-    break
-  urllist=missedUrllist
-
-# afterCrawl(missedUrllist)
-# timestr = time.strftime("%Y%m%d-%H%M%S")
-# filename='output_'+timestr+'.csv'
-# os.rename('output.csv',filename)
-# #os.remove("output.csv")
-# os.remove("urllistFile.txt")
-# missedUrllist=missedUrls()
-# afterCrawl(missedUrllist)
-# missedUrllist=missedUrls()
-# timestr = time.strftime("%Y%m%d-%H%M%S")
-# filename='output_'+timestr+'.csv'
-# os.rename('output6.csv',filename)
-# print("--- %s seconds ---" % (time.time() - start_time))
+  urllist=missedUrls()
+  execCrawl+=1
+print("--- %s seconds ---" % (time.time() - start_time))
