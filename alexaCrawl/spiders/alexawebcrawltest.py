@@ -352,15 +352,15 @@ class alexaSpider(Spider):
                 if "IN A" in item:
                     ip=str(item.split("IN A")[1])
                     if ip:
-                        domain=item.split(' ')[0].strip()
-                        domain=domain.lower()  
-                        if domain.startswith('www.'):
-                            domain = domain.replace("www","")
-                        if domain.endswith('.'):
-                            domain=domain[:-1]
-                        if not domain.startswith('http://'):
-                            domain = 'http://%s' % domain
-                        secondlevelurl=str(getsecondleveldomain(domain))
+                        cdnUrl=item.split(' ')[0].strip()
+                        cdnUrl=cdnUrl.lower()
+                        if cdnUrl.startswith('www.'):
+                            cdnUrl = cdnUrl.replace("www","")
+                        if cdnUrl.endswith('.'):
+                            cdnUrl=cdnUrl[:-1]
+                        if not cdnUrl.startswith('http://'):
+                            cdnUrl = 'http://%s' % cdnUrl
+                        secondlevelurl=str(getsecondleveldomain(cdnUrl))
                         CNAMEList.append(secondlevelurl)
                         dest_server_ip.append(str(ip).strip())
                         gir = pygeoip.GeoIP('GeoIPASNum.dat',flags=pygeoip.const.GEOIP_STANDARD)
