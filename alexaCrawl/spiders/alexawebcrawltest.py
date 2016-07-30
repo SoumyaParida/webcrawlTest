@@ -71,7 +71,7 @@ class alexaSpider(Spider):
     global getsecondleveldomain
     global dest_ASN    
     global urllist
-    global resulturldict   
+    global resulturldict 
     dest_ASN=[]
     #dest_server_ip=[]
     urllist=[]
@@ -230,7 +230,6 @@ class alexaSpider(Spider):
             page['NumberOfuniqueExternalSecondlevelSites'] = len(distinctSecondlevelSites)
         else:
             page['NumberOfuniqueExternalSecondlevelSites'] = 0
-
         if len(distinctAsn) > 0:
             page['distinctASNs'] = len(distinctAsn)
         else:
@@ -240,6 +239,7 @@ class alexaSpider(Spider):
     def _distinctASN(weblinks):
         destASNValues=set()
         SecondlevelSites=set()
+
         for site in weblinks:
             domain = urlparse(site).netloc
             if domain.startswith('http://'):
@@ -268,13 +268,7 @@ class alexaSpider(Spider):
                                 url=url[:-1] 
                             if not url.startswith('http://'): 
                                 url = 'http://%s' % url
-                            urls=str(getsecondleveldomain(url))
-                            if ';' not in urls:
-                                SecondlevelSites.add(str(getsecondleveldomain(url)))
-                            else:
-                                urllist=urls.split(';')
-                                for item in urllist:
-                                    SecondlevelSites.add(str(getsecondleveldomain(item)))
+                            SecondlevelSites.add(str(getsecondleveldomain(url)))
                             gir = pygeoip.GeoIP('GeoIPASNum.dat',flags=pygeoip.const.GEOIP_STANDARD)
                             asNum = gir.asn_by_name(str(ip))
                             if asNum:
@@ -290,12 +284,6 @@ class alexaSpider(Spider):
             except dns.resolver.NoAnswer:
                 continue
         return (destASNValues,SecondlevelSites)
-    #@profile
-    def _set_title(self, page, response):
-        if isinstance(response, HtmlResponse):
-            title = Selector(response).xpath("//title/text()").extract()
-            if title:
-                page['title'] = title[0]
 
     """[Author:Som ,last modified:16th April 2015]
     def _set_new_cookies:used to crawl cookies of
@@ -334,6 +322,8 @@ class alexaSpider(Spider):
 
         if domain.endswith('/'):
             domain = domain.replace("/", "", 1)
+        if not domain.startswith('www.'):
+                domain = 'www.%s' % domain
         try:
             #answer = dns.resolver.query(domain,"A")
             #print answer.response
