@@ -10,6 +10,7 @@ import time
 import os
 from collections import defaultdict
 from shutil import copyfile
+from multiprocessing import Process, Lock
 
 start_time = time.time()
 rowValues=[]
@@ -82,25 +83,8 @@ def multiProc_crawler(domainlist,nprocs):
             maxInt = int(maxInt/10)
             decrement = True
 
-def missedUrls():
-    APACHE_ACCESS_LOG_PATTERN ='(\S+)(\t)(\d{1})(\t)(\d{3})(\t)(\w+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)(\S+)(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})(\t)([0-5]?[0-9]:[0-5]?[0-9]:[0-5]?[0-9].\d{6})'
-    wordcount=list()
-    UrlNotInResultFile=list()
-    #os.rename('output6.csv','final.csv')
-    copyfile('output6.csv','final.csv')
-    logwr = open("final.csv").readlines()
-    newoutput=open("finalcheckCopy.csv", "w")
-    urllistFile=open("urllistFile.txt",'wbr+')
-    print "Reading files start"
-    for idx, line in enumerate(logwr):
-        match = re.search(APACHE_ACCESS_LOG_PATTERN, line)
-        if match is None:
-            logwr.pop(idx)
-        else:
-            newoutput.write(line)
-    newoutput.close()
-    print "Reading files over"      
-    logFile = codecs.open("finalcheckCopy.csv",'rU')
+def missedUrls():     
+    logFile = codecs.open("successfulUrls.csv",'rU')
     IndexNotInResultFile=list()
     wordcount=set()
     UrlNotInResultFile=list()
@@ -136,9 +120,11 @@ with open('top-1m.csv') as csvfile:
         rowValue=', '.join(row)
         rowValues=rowValue.split(",")
         urllist.append(rowValues)
-while execCrawl < 3:
+while execCrawl < 1:
   finallist=makeSublist(urllist)
   multiProc_crawler(finallist,listrange)
   urllist=missedUrls()
   execCrawl+=1
+
+
 print("--- %s seconds ---" % (time.time() - start_time))
