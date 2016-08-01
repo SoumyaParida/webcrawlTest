@@ -85,6 +85,7 @@ def multiProc_crawler(domainlist,nprocs):
 
 def missedUrls():     
     logFile = codecs.open("successfulUrls.csv",'rU')
+    urllistFile=open("urllistFile.txt",'wbr+')
     IndexNotInResultFile=list()
     wordcount=set()
     UrlNotInResultFile=list()
