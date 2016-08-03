@@ -16,7 +16,11 @@ import ast
 from HTMLParser import HTMLParser
 from collections import defaultdict
 import threading
+import urllib
 from scrapy.contrib.linkextractors.lxmlhtml import LxmlLinkExtractor
+from scrapy.spidermiddlewares.httperror import HttpError
+from twisted.internet.error import DNSLookupError
+from twisted.internet.error import TimeoutError, TCPTimedOutError
 
 list_of_tags=list()
 
@@ -27,6 +31,8 @@ sys.setdefaultencoding("utf-8")
 
 resultFile = codecs.open("output6.csv",'wbr+')
 successfulUrlsList=codecs.open("successfulUrls.csv",'wbr+')
+errorLogfile=codecs.open("errorLog.csv",'wbr+')
+errorwr = csv.writer(errorLogfile, skipinitialspace=True,delimiter='\t',quotechar=' ', quoting=csv.QUOTE_MINIMAL)
 lock = threading.Lock()
 def write_to_file(wr,value):
     lock.acquire() # thread blocks at this line until it can obtain lock
@@ -92,7 +98,7 @@ class alexaSpider(Spider):
         self.urlIndexlist=ast.literal_eval(arg2)
         for url in self.urllistfile:
             if not url.startswith('http://') and not url.startswith('https://'):
-                newurl = 'http://www.%s' % url
+                newurl = 'http://%s' % url
             resulturldict[newurl]=self.urlIndexlist.get(url)    
  
     def start_requests(self):
@@ -102,7 +108,19 @@ class alexaSpider(Spider):
             indexUnique=resulturldict.get(url)
             urlCnameDict=dict()
             urlCnameDict=getCNameIpAsn(url)
-            yield Request(url, meta={'counter': indexUnique,'resultDict': urlCnameDict},method='GET',callback=self.parse,dont_filter=True)
+            yield Request(url, meta={'counter': indexUnique,'resultDict': urlCnameDict},method='GET',callback=self.parse,errback=self.errback_httpbin,dont_filter=True)
+
+    def errback_httpbin(self,failure):
+        error=list()
+        # in case you want to do something special for some errors,
+        # you may need the failure's type:
+        if failure.check(HttpError):
+            error.append(failure)
+        elif failure.check(DNSLookupError):
+            error.append(failure)
+        elif failure.check(TimeoutError, TCPTimedOutError):
+            error.append(failure)
+        errorwr.writerow(error)
 
     """[Author:Som ,last modified:15th April 2015]
     start_requests:Overriding method of scrapy.spider.Spider class. 
@@ -194,8 +212,6 @@ class alexaSpider(Spider):
     def _get_item(self, response,counter,urlCnameDict):
         item = Page(url=response.url,content_length=str(len(response.body)),depth_level=response.meta,
             httpResponseStatus=response.status,start_time= datetime.now().time())
-        # print "*************************************"
-        # print "siteinfodict",urlCnameDict
         self._set_new_cookies(item,response)
         self._set_DNS_info(item,response,urlCnameDict)
         return item
@@ -241,7 +257,7 @@ class alexaSpider(Spider):
                 Asnlist,uniqueSecondlevelSites,masterDict= _distinctASN(siteList)
                 distinctAsn = distinctAsn | Asnlist
                 distinctSecondlevelSites = distinctSecondlevelSites | uniqueSecondlevelSites
-                r.extend(Request(site, callback=self.parse,method='HEAD',meta={'resultDict': masterDict,'counter': counterValue,'tagType': str(k),'download_timeout':15})for site in siteList if site.startswith("http://") or site.startswith("https://") or site.startswith("www."))
+                r.extend(Request(site, callback=self.parse,method='HEAD',meta={'resultDict': masterDict,'counter': counterValue,'tagType': str(k),'download_timeout':15})for site in siteList)
         if len(embededSites) > 0:
             page['ObjectCount'] = len(embededSites)
         else:
