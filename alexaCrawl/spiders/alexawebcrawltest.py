@@ -62,9 +62,13 @@ def getCodedList(sites,siteList):
         for item in sites:
             if isinstance(item, unicode):
                 item=item.decode('latin-1').encode('utf-8')
-                siteList.append(item)
+                if not item.startswith('http://') and not item.startswith('https://'):
+                    newurl = 'http://%s' % item 
+                siteList.append(newurl)
             else:
-                siteList.append(item)
+                if not item.startswith('http://') and not item.startswith('https://'):
+                    newurl = 'http://%s' % item 
+                siteList.append(newurl)
     return siteList
 #from scrapy.stats import stats
 class alexaSpider(Spider): 
@@ -146,7 +150,7 @@ class alexaSpider(Spider):
         else:
             page['depth_level']='0'
 
-        if ((response.status == 200) and (page['depth_level'] =='0')):
+        if (((response.status == 200) or (response.status == 403)) and (page['depth_level'] =='0')):
             successfulUrls.append(counter)
             successfulUrls.append(str(response.url))
             newwr.writerow(successfulUrls)

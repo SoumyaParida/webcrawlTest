@@ -115,13 +115,13 @@ If yes it will again start crawling the websites."""
 urllist=list()
 missedUrllist=list()
 execCrawl=0
-with open('top-10000.csv') as csvfile:
+with open('top-1m.csv') as csvfile:
     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
     for row in spamreader:
         rowValue=', '.join(row)
         rowValues=rowValue.split(",")
         urllist.append(rowValues)
-while execCrawl < 3:
+while execCrawl < 1:
   finallist=makeSublist(urllist)
   multiProc_crawler(finallist,listrange)
   urllist=missedUrls()
