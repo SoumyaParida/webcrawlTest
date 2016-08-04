@@ -18,7 +18,7 @@ from collections import defaultdict
 import threading
 import urllib
 from scrapy.contrib.linkextractors.lxmlhtml import LxmlLinkExtractor
-from scrapy.spidermiddlewares.httperror import HttpError
+from scrapy.contrib.spidermiddleware.httperror import HttpError
 from twisted.internet.error import DNSLookupError
 from twisted.internet.error import TimeoutError, TCPTimedOutError
 
@@ -64,11 +64,11 @@ def getCodedList(sites,siteList):
                 item=item.decode('latin-1').encode('utf-8')
                 if not item.startswith('http://') and not item.startswith('https://'):
                     newurl = 'http://%s' % item 
-                siteList.append(newurl)
+                    siteList.append(newurl)
             else:
                 if not item.startswith('http://') and not item.startswith('https://'):
                     newurl = 'http://%s' % item 
-                siteList.append(newurl)
+                    siteList.append(newurl)
     return siteList
 #from scrapy.stats import stats
 class alexaSpider(Spider): 
