@@ -62,13 +62,9 @@ def getCodedList(sites,siteList):
         for item in sites:
             if isinstance(item, unicode):
                 item=item.decode('latin-1').encode('utf-8')
-                if not item.startswith('http://') and not item.startswith('https://'):
-                    newurl = 'http://%s' % item 
-                    siteList.append(newurl)
+                siteList.append(item)
             else:
-                if not item.startswith('http://') and not item.startswith('https://'):
-                    newurl = 'http://%s' % item 
-                    siteList.append(newurl)
+                siteList.append(item)
     return siteList
 #from scrapy.stats import stats
 class alexaSpider(Spider): 
@@ -261,7 +257,7 @@ class alexaSpider(Spider):
                 Asnlist,uniqueSecondlevelSites,masterDict= _distinctASN(siteList)
                 distinctAsn = distinctAsn | Asnlist
                 distinctSecondlevelSites = distinctSecondlevelSites | uniqueSecondlevelSites
-                r.extend(Request(site, callback=self.parse,method='HEAD',meta={'resultDict': masterDict,'counter': counterValue,'tagType': str(k),'download_timeout':15})for site in siteList)
+                r.extend(Request(site, callback=self.parse,method='HEAD',meta={'resultDict': masterDict,'counter': counterValue,'tagType': str(k),'download_timeout':15})for site in siteList if site.startswith("http://") or site.startswith("https://") or site.startswith("www."))
         if len(embededSites) > 0:
             page['ObjectCount'] = len(embededSites)
         else:
