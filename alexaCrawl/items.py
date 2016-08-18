@@ -9,6 +9,7 @@ class Page(Item):
     newcookies=Field()
     tagType=Field()
     CNAMEChain=Field()
+    secondleveldomains=Field()
     destIP=Field()
     ASN_Number=Field()
     distinctASNs=Field()

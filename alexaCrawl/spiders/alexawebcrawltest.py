@@ -21,6 +21,7 @@ from scrapy.contrib.linkextractors.lxmlhtml import LxmlLinkExtractor
 from scrapy.contrib.spidermiddleware.httperror import HttpError
 from twisted.internet.error import DNSLookupError
 from twisted.internet.error import TimeoutError, TCPTimedOutError
+from tld import get_tld
 
 list_of_tags=list()
 
@@ -178,6 +179,8 @@ class alexaSpider(Spider):
         urlList.append(page['tagType'])
         cname=';'.join(page['CNAMEChain'])
         urlList.append(cname)
+        secondleveldomains=';'.join(page['secondleveldomains'])
+        urlList.append(secondleveldomains)
         dest_server_ip_values=';'.join(page['destIP'])
         urlList.append(dest_server_ip_values)
         asn_no=';'.join(page['ASN_Number'])
@@ -312,6 +315,7 @@ class alexaSpider(Spider):
     """
     def _set_DNS_info(self, page,response,urlCnameDict):
         CNAMEList = list()
+        secondlevledomainList=list()
         dest_server_ip=list()
         dest_ASN=set()
         domain = response.url
@@ -322,6 +326,7 @@ class alexaSpider(Spider):
             CNAMEList=resultInfo[0]
             dest_server_ip=resultInfo[1]
             dest_ASN=resultInfo[2]
+            secondlevledomainList=resultInfo[3]
             if len(dest_ASN) >0:
                 page['ASN_Number'] = dest_ASN
             else:
@@ -336,26 +341,18 @@ class alexaSpider(Spider):
                 page['destIP'] = dest_server_ip
             else:
                 page['destIP'] = '-'
+            if len(secondlevledomainList) >0:
+                page['secondleveldomains'] = secondlevledomainList
+            else:
+                page['secondleveldomains'] = '-'
         else :
             page['CNAMEChain'] = "-"
             page['destIP']= "-"
             page['ASN_Number']= "-"
+            page['secondleveldomains'] = '-'
 
     def getsecondleveldomain(url):
-        with open("effective_tld_names.dat") as tld_file:
-            tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
-        url_elements = urlparse(url)[1].split('.')
-        for i in range(-len(url_elements), 0):
-            last_i_elements = url_elements[i:]
-            candidate = ".".join(last_i_elements) # abcde.co.uk, co.uk, uk
-            wildcard_candidate = ".".join(["*"] + last_i_elements[1:]) # *.co.uk, *.uk, *
-            exception_candidate = "!" + candidate
-
-            # match tlds: 
-            if (exception_candidate in tlds):
-                return ".".join(url_elements[i:]) 
-            if (candidate in tlds or wildcard_candidate in tlds):
-                return ".".join(url_elements[i-1:])
+        return get_tld(url)
 
     def getCNameIpAsn(site):
         CNAMEList = list()
