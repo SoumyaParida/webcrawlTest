@@ -318,6 +318,8 @@ class alexaSpider(Spider):
         secondlevledomainList=list()
         dest_server_ip=list()
         dest_ASN=set()
+        hostlist=list()
+        hostlistFinal=set()
         domain = response.url
         global dns_lookup_time
         domain=urlParseSite(domain)
@@ -326,7 +328,15 @@ class alexaSpider(Spider):
             CNAMEList=resultInfo[0]
             dest_server_ip=resultInfo[1]
             dest_ASN=resultInfo[2]
-            secondlevledomainList=resultInfo[3]
+            hostlist=zip(CNAMEList, dest_server_ip)
+            for value in hostlist:
+                url=value[0].split(' ')[0].strip()
+                if url.endswith('.'):
+                    url = url[:-1]
+                if not url.startswith('http://'):
+                    url="http://"+url
+                hostlistFinal.add(str(((str(getsecondleveldomain(url)).split('.'))[0],str(value[1]).strip())))
+
             if len(dest_ASN) >0:
                 page['ASN_Number'] = dest_ASN
             else:
@@ -341,8 +351,8 @@ class alexaSpider(Spider):
                 page['destIP'] = dest_server_ip
             else:
                 page['destIP'] = '-'
-            if len(secondlevledomainList) >0:
-                page['secondleveldomains'] = secondlevledomainList
+            if len(hostlistFinal) >0:
+                page['secondleveldomains'] = hostlistFinal
             else:
                 page['secondleveldomains'] = '-'
         else :
