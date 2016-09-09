@@ -248,6 +248,7 @@ class alexaSpider(Spider):
             if isinstance(response, HtmlResponse):
                 sites=list()
                 siteList=list()
+                newsiteSet=set()
                 if str(k) =='img':
                     sites=Selector(response).xpath('//img/@src').extract()
                     siteList=getCodedList(sites,siteList)
@@ -257,11 +258,17 @@ class alexaSpider(Spider):
                     siteList=getCodedList(sites,siteList)
                 for site in siteList:
                     embededSites.add(site)
+                for site in siteList:
+                    if not site.startswith('http://') and not site.startswith('https://'):
+                        newurl = 'http://%s' % site
+                        newsiteSet.add(newurl)
+                    else:
+                        newsiteSet.add(site)
                 ObjectCount = ObjectCount+len(siteList)
                 Asnlist,uniqueSecondlevelSites= _distinctASN(siteList)
                 distinctAsn = distinctAsn | Asnlist
                 distinctSecondlevelSites = distinctSecondlevelSites | uniqueSecondlevelSites
-                r.extend(Request(site, callback=self.parse,method='HEAD',meta={'resultDict': getCNameIpAsn(site),'counter': counterValue,'tagType': str(k),'download_timeout':15})for site in siteList if site.startswith("http://") or site.startswith("https://") or site.startswith("www."))
+                r.extend(Request(site, callback=self.parse,method='HEAD',meta={'resultDict': getCNameIpAsn(site),'counter': counterValue,'tagType': str(k),'download_timeout':15})for site in newsiteSet)
         if len(embededSites) > 0:
             page['ObjectCount'] = len(embededSites)
         else:
