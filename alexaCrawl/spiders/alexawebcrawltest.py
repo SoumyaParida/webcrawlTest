@@ -171,6 +171,7 @@ class alexaSpider(Spider):
         urlList.append(page['index'])
         urlList.append(page['depth_level'])
         urlList.append(page['httpResponseStatus'])
+        urlList.append(page['MIMEcontentType'])
         urlList.append(page['content_length'])
         urlList.append(page['url'].strip())
         cookieStr=';'.join(page['newcookies'])
@@ -179,8 +180,8 @@ class alexaSpider(Spider):
         urlList.append(page['tagType'])
         cname=';'.join(page['CNAMEChain'])
         urlList.append(cname)
-        secondleveldomains=';'.join(page['secondleveldomains'])
-        urlList.append(secondleveldomains)
+        #secondleveldomains=';'.join(page['secondleveldomains'])
+        #urlList.append(secondleveldomains)
         dest_server_ip_values=';'.join(page['destIP'])
         urlList.append(dest_server_ip_values)
         asn_no=';'.join(page['ASN_Number'])
@@ -213,7 +214,7 @@ class alexaSpider(Spider):
     """
     #@profile
     def _get_item(self, response,counter,urlCnameDict):
-        item = Page(url=response.url,content_length=str(len(response.body)),depth_level=response.meta,
+        item = Page(url=response.url,content_length=str(len(response.body)),MIMEcontentType=str(response.headers['Content-Type']),depth_level=response.meta,
             httpResponseStatus=response.status,start_time= datetime.now().time())
         self._set_new_cookies(item,response)
         self._set_DNS_info(item,response,urlCnameDict)
@@ -257,10 +258,10 @@ class alexaSpider(Spider):
                 for site in siteList:
                     embededSites.add(site)
                 ObjectCount = ObjectCount+len(siteList)
-                Asnlist,uniqueSecondlevelSites,masterDict= _distinctASN(siteList)
+                Asnlist,uniqueSecondlevelSites= _distinctASN(siteList)
                 distinctAsn = distinctAsn | Asnlist
                 distinctSecondlevelSites = distinctSecondlevelSites | uniqueSecondlevelSites
-                r.extend(Request(site, callback=self.parse,method='HEAD',meta={'resultDict': masterDict,'counter': counterValue,'tagType': str(k),'download_timeout':15})for site in siteList if site.startswith("http://") or site.startswith("https://") or site.startswith("www."))
+                r.extend(Request(site, callback=self.parse,method='HEAD',meta={'resultDict': getCNameIpAsn(site),'counter': counterValue,'tagType': str(k),'download_timeout':15})for site in siteList if site.startswith("http://") or site.startswith("https://") or site.startswith("www."))
         if len(embededSites) > 0:
             page['ObjectCount'] = len(embededSites)
         else:
@@ -281,19 +282,16 @@ class alexaSpider(Spider):
         SecondlevelSites=set()
         cNamelist=list()
         dest_ip=list()
-        masterDict=dict()
 
         for site in weblinks:    
             siteinfodict=getCNameIpAsn(site)
-            url=urlParseSite(site)
-            if siteinfodict is not None and siteinfodict.get(url) is not None:
-                sitedict=siteinfodict.get(url)
+            if siteinfodict is not None and siteinfodict.get(site) is not None:
+                sitedict=siteinfodict.get(site)
                 cNamelist+=sitedict[0]
                 dest_ip+=sitedict[1]
                 destASNValues=destASNValues | sitedict[2]
                 SecondlevelSites= SecondlevelSites| sitedict[3]
-                masterDict[url]=(sitedict[0],sitedict[1],sitedict[2],sitedict[3])
-        return (destASNValues,SecondlevelSites,masterDict)
+        return (destASNValues,SecondlevelSites)
 
     """[Author:Som ,last modified:16th April 2015]
     def _set_new_cookies:used to crawl cookies of
@@ -322,20 +320,20 @@ class alexaSpider(Spider):
         hostlistFinal=set()
         domain = response.url
         global dns_lookup_time
-        domain=urlParseSite(domain)
+        #domain=urlParseSite(domain)
         if urlCnameDict is not None and urlCnameDict.get(domain) is not None:
             resultInfo=urlCnameDict.get(domain)
             CNAMEList=resultInfo[0]
             dest_server_ip=resultInfo[1]
             dest_ASN=resultInfo[2]
-            hostlist=zip(CNAMEList, dest_server_ip)
-            for value in hostlist:
-                url=value[0].split(' ')[0].strip()
-                if url.endswith('.'):
-                    url = url[:-1]
-                if not url.startswith('http://'):
-                    url="http://"+url
-                hostlistFinal.add(str(((str(getsecondleveldomain(url)).split('.'))[0],str(value[1]).strip())))
+            # hostlist=zip(CNAMEList, dest_server_ip)
+            # for value in hostlist:
+            #     url=value[0].split(' ')[0].strip()
+            #     if url.endswith('.'):
+            #         url = url[:-1]
+            #     if not url.startswith('http://'):
+            #         url="http://"+url
+            #     hostlistFinal.add(str(((str(getsecondleveldomain(url)).split('.'))[0],str(value[1]).strip())))
 
             if len(dest_ASN) >0:
                 page['ASN_Number'] = dest_ASN
@@ -351,15 +349,15 @@ class alexaSpider(Spider):
                 page['destIP'] = dest_server_ip
             else:
                 page['destIP'] = '-'
-            if len(hostlistFinal) >0:
-                page['secondleveldomains'] = hostlistFinal
-            else:
-                page['secondleveldomains'] = '-'
+            # if len(hostlistFinal) >0:
+            #     page['secondleveldomains'] = hostlistFinal
+            # else:
+            #     page['secondleveldomains'] = '-'
         else :
             page['CNAMEChain'] = "-"
             page['destIP']= "-"
             page['ASN_Number']= "-"
-            page['secondleveldomains'] = '-'
+            #page['secondleveldomains'] = '-'
 
     def getsecondleveldomain(url):
         return get_tld(url)
@@ -384,7 +382,7 @@ class alexaSpider(Spider):
                             url = url[:-1]
                         if not url.startswith('http://'):
                             url="http://"+url
-                        CNAMEList.append(item.split(' ')[0].strip())
+                        CNAMEList.append(str(getsecondleveldomain(url)))
                         secondlevelDomain.add(str(getsecondleveldomain(url)))
                         dest_server_ip.append(str(ip).strip())
                         gir = pygeoip.GeoIP('GeoIPASNum.dat',flags=pygeoip.const.GEOIP_STANDARD)
@@ -397,7 +395,7 @@ class alexaSpider(Spider):
             CNAMEList.append('-')
             dest_server_ip.append('-')
             dest_ASN.add('-')
-        urlCnameDict[domain]=(CNAMEList,dest_server_ip,dest_ASN,secondlevelDomain)
+        urlCnameDict[site]=(CNAMEList,dest_server_ip,dest_ASN,secondlevelDomain)
         return urlCnameDict
 
     def urlParseSite(site):
